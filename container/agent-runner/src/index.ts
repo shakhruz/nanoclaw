@@ -470,6 +470,7 @@ async function runQuery(
           'Skill',
           'NotebookEdit',
           'mcp__nanoclaw__*',
+          'mcp__gmail__*',
         ];
         if (process.env.PARALLEL_API_KEY) {
           tools.push('mcp__parallel-search__*', 'mcp__parallel-task__*');
@@ -492,6 +493,10 @@ async function runQuery(
               NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
               NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
             },
+          },
+          gmail: {
+            command: 'npx',
+            args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
           },
         };
         const parallelKey = process.env.PARALLEL_API_KEY;
