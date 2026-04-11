@@ -26,6 +26,7 @@ import {
   stopContainer,
 } from './container-runtime.js';
 import { detectAuthMode } from './credential-proxy.js';
+import { readEnvFile } from './env.js';
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
 
@@ -258,6 +259,16 @@ function buildContainerArgs(
     args.push('-e', 'ANTHROPIC_API_KEY=placeholder');
   } else {
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
+  }
+
+  // Pass through optional integration secrets that the agent-runner uses
+  // to configure additional MCP servers (Parallel AI, etc.).
+  // These are NOT routed through the credential proxy — they're plain
+  // env var passthrough. Acceptable because the container is isolated and
+  // the host user is the only consumer.
+  const integrationSecrets = readEnvFile(['PARALLEL_API_KEY']);
+  if (integrationSecrets.PARALLEL_API_KEY) {
+    args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
   }
 
   // Runtime-specific args for host gateway resolution
