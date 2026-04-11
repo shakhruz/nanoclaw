@@ -286,13 +286,19 @@ function buildContainerArgs(
   }
 
   // Pass through optional integration secrets that the agent-runner uses
-  // to configure additional MCP servers (Parallel AI, etc.).
+  // to configure additional MCP servers (Parallel AI, Todoist, etc.).
   // These are NOT routed through the credential proxy — they're plain
   // env var passthrough. Acceptable because the container is isolated and
   // the host user is the only consumer.
-  const integrationSecrets = readEnvFile(['PARALLEL_API_KEY']);
+  const integrationSecrets = readEnvFile([
+    'PARALLEL_API_KEY',
+    'TODOIST_API_TOKEN',
+  ]);
   if (integrationSecrets.PARALLEL_API_KEY) {
     args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
+  }
+  if (integrationSecrets.TODOIST_API_TOKEN) {
+    args.push('-e', `TODOIST_API_TOKEN=${integrationSecrets.TODOIST_API_TOKEN}`);
   }
 
   // Runtime-specific args for host gateway resolution

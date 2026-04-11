@@ -535,6 +535,9 @@ async function runQuery(
         if (process.env.PARALLEL_API_KEY) {
           tools.push('mcp__parallel-search__*', 'mcp__parallel-task__*');
         }
+        if (process.env.TODOIST_API_TOKEN) {
+          tools.push('mcp__todoist__*');
+        }
         return tools;
       })(),
       env: sdkEnv,
@@ -580,6 +583,15 @@ async function runQuery(
             headers: { Authorization: `Bearer ${parallelKey}` },
           };
           log('Parallel AI MCP servers configured');
+        }
+        const todoistToken = process.env.TODOIST_API_TOKEN;
+        if (todoistToken) {
+          servers['todoist'] = {
+            command: 'npx',
+            args: ['-y', 'todoist-mcp'],
+            env: { TODOIST_API_TOKEN: todoistToken },
+          };
+          log('Todoist MCP server configured');
         }
         return servers;
       })(),
