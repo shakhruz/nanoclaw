@@ -33,7 +33,20 @@ interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   script?: string;
+  imageAttachments?: Array<{ relativePath: string; mediaType: string }>;
 }
+
+type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+interface ImageContentBlock {
+  type: 'image';
+  source: { type: 'base64'; media_type: ImageMediaType; data: string };
+}
+interface TextContentBlock {
+  type: 'text';
+  text: string;
+}
+type ContentBlock = ImageContentBlock | TextContentBlock;
 
 interface ContainerOutput {
   status: 'success' | 'error';
@@ -55,7 +68,7 @@ interface SessionsIndex {
 
 interface SDKUserMessage {
   type: 'user';
-  message: { role: 'user'; content: string };
+  message: { role: 'user'; content: string | ContentBlock[] };
   parent_tool_use_id: null;
   session_id: string;
 }
@@ -77,6 +90,16 @@ class MessageStream {
     this.queue.push({
       type: 'user',
       message: { role: 'user', content: text },
+      parent_tool_use_id: null,
+      session_id: '',
+    });
+    this.waiting?.();
+  }
+
+  pushMultimodal(content: ContentBlock[]): void {
+    this.queue.push({
+      type: 'user',
+      message: { role: 'user', content },
       parent_tool_use_id: null,
       session_id: '',
     });
@@ -386,6 +409,42 @@ async function runQuery(
   const stream = new MessageStream();
   stream.push(prompt);
 
+  // If the prompt referenced any images via [Image: attachments/...] markers,
+  // load the bytes from /workspace/group/<relativePath>, base64-encode, and
+  // push as a multimodal user message so Claude can SEE them (not just OCR).
+  if (containerInput.imageAttachments?.length) {
+    const blocks: ContentBlock[] = [];
+    const validMediaTypes: ImageMediaType[] = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
+    for (const img of containerInput.imageAttachments) {
+      const imgPath = path.join('/workspace/group', img.relativePath);
+      const mediaType = validMediaTypes.includes(
+        img.mediaType as ImageMediaType,
+      )
+        ? (img.mediaType as ImageMediaType)
+        : 'image/jpeg';
+      try {
+        const data = fs.readFileSync(imgPath).toString('base64');
+        blocks.push({
+          type: 'image',
+          source: { type: 'base64', media_type: mediaType, data },
+        });
+      } catch (err) {
+        log(
+          `Failed to load image ${imgPath}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    if (blocks.length > 0) {
+      log(`Pushing ${blocks.length} image(s) as multimodal content blocks`);
+      stream.pushMultimodal(blocks);
+    }
+  }
+
   // Poll IPC for follow-up messages and _close sentinel during the query
   let ipcPolling = true;
   let closedDuringQuery = false;
@@ -471,6 +530,7 @@ async function runQuery(
           'NotebookEdit',
           'mcp__nanoclaw__*',
           'mcp__gmail__*',
+          'mcp__gcal__*',
         ];
         if (process.env.PARALLEL_API_KEY) {
           tools.push('mcp__parallel-search__*', 'mcp__parallel-task__*');
@@ -497,6 +557,14 @@ async function runQuery(
           gmail: {
             command: 'npx',
             args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
+          },
+          gcal: {
+            command: 'npx',
+            args: ['-y', '@cocal/google-calendar-mcp'],
+            env: {
+              GOOGLE_OAUTH_CREDENTIALS:
+                '/home/node/.gmail-mcp/gcp-oauth.keys.json',
+            },
           },
         };
         const parallelKey = process.env.PARALLEL_API_KEY;

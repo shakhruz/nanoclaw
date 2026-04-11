@@ -44,6 +44,7 @@ export interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   script?: string;
+  imageAttachments?: Array<{ relativePath: string; mediaType: string }>;
 }
 
 export interface ContainerOutput {
@@ -184,6 +185,17 @@ function buildVolumeMounts(
     mounts.push({
       hostPath: gmailDir,
       containerPath: '/home/node/.gmail-mcp',
+      readonly: false, // MCP may need to refresh OAuth tokens
+    });
+  }
+
+  // Google Calendar MCP credentials directory (separate from gmail; reuses
+  // the same OAuth client but stores its own tokens.json with calendar scope)
+  const gcalDir = path.join(homeDir, '.config', 'google-calendar-mcp');
+  if (fs.existsSync(gcalDir)) {
+    mounts.push({
+      hostPath: gcalDir,
+      containerPath: '/home/node/.config/google-calendar-mcp',
       readonly: false, // MCP may need to refresh OAuth tokens
     });
   }
