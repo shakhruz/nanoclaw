@@ -826,6 +826,21 @@ async function main(): Promise<void> {
       }
       await channel.reactToMessage(jid, messageId, emoji);
     },
+    sendMessageWithButtons: async (jid, text, buttons) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) {
+        logger.warn({ jid }, 'sendMessageWithButtons: no channel owns JID');
+        return;
+      }
+      if (!channel.sendMessageWithButtons) {
+        logger.warn(
+          { jid, channel: channel.name },
+          'sendMessageWithButtons: channel does not support inline buttons, dropping',
+        );
+        return;
+      }
+      await channel.sendMessageWithButtons(jid, text, buttons);
+    },
     registeredGroups: () => registeredGroups,
     registerGroup,
     syncGroups: async (force: boolean) => {

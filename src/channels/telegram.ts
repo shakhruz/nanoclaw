@@ -11,6 +11,7 @@ import { processImageFile } from '../image.js';
 import { logger } from '../logger.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 import {
+  InlineButton,
   Channel,
   OnChatMetadata,
   OnInboundMessage,
@@ -484,6 +485,60 @@ export class TelegramChannel implements Channel {
       }
     });
 
+    // Inline button callback queries — see inline-buttons skill for usage.
+    // Delivers button presses as synthetic `[Callback: <data>] on message <id>`
+    // messages. Auto-answers the callback query immediately (removes loading
+    // indicator) so the button tap feels instant.
+    this.bot.on('callback_query:data', async (ctx) => {
+      const chatJid = `tg:${ctx.chat?.id ?? ctx.callbackQuery.message?.chat.id}`;
+      const group = this.opts.registeredGroups()[chatJid];
+      if (!group) {
+        await ctx.answerCallbackQuery().catch(() => {}); // answer even for unregistered
+        return;
+      }
+
+      // Answer immediately to remove the loading spinner on the button
+      await ctx.answerCallbackQuery().catch((err) => {
+        logger.debug({ err }, 'Failed to answer callback query');
+      });
+
+      const data = ctx.callbackQuery.data ?? '';
+      const origMsgId =
+        ctx.callbackQuery.message?.message_id?.toString() ?? '';
+      const timestamp = new Date().toISOString();
+      const senderName =
+        ctx.from?.first_name ||
+        ctx.from?.username ||
+        ctx.from?.id.toString() ||
+        'Unknown';
+      const sender = ctx.from?.id.toString() ?? '';
+
+      const isGroup =
+        ctx.chat?.type === 'group' || ctx.chat?.type === 'supergroup';
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        undefined,
+        'telegram',
+        isGroup,
+      );
+
+      this.opts.onMessage(chatJid, {
+        id: `callback-${ctx.callbackQuery.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        chat_jid: chatJid,
+        sender,
+        sender_name: senderName,
+        content: `[Callback: ${data}] on message ${origMsgId}`,
+        timestamp,
+        is_from_me: false,
+      });
+
+      logger.info(
+        { chatJid, data, origMsgId, sender: senderName },
+        'Telegram callback query delivered',
+      );
+    });
+
     // Handle errors gracefully
     this.bot.catch((err) => {
       logger.error({ err: err.message }, 'Telegram bot error');
@@ -555,6 +610,63 @@ export class TelegramChannel implements Channel {
         { jid, messageId, emoji, err },
         'Failed to send Telegram reaction (likely REACTION_INVALID — emoji not in Bot API whitelist)',
       );
+    }
+  }
+
+  /**
+   * Send a message with an inline keyboard. Callback presses are delivered as
+   * synthetic `[Callback: <data>] on message <id>` messages via the
+   * callback_query handler below.
+   */
+  async sendMessageWithButtons(
+    jid: string,
+    text: string,
+    buttons: InlineButton[][],
+  ): Promise<void> {
+    if (!this.bot) {
+      logger.warn('Telegram bot not initialized (sendMessageWithButtons)');
+      return;
+    }
+    try {
+      const numericId = jid.replace(/^tg:/, '');
+      const inline_keyboard = buttons.map((row) =>
+        row.map((btn) => {
+          if (btn.url) {
+            return { text: btn.text, url: btn.url };
+          }
+          // Bot API 9.4: style and icon_custom_emoji_id are not yet in grammy
+          // types — pass as `unknown` to bypass type checking.
+          const buttonObj: Record<string, unknown> = {
+            text: btn.text,
+            callback_data: btn.data ?? '',
+          };
+          if (btn.style) buttonObj.style = btn.style;
+          if (btn.icon_custom_emoji_id) buttonObj.icon_custom_emoji_id = btn.icon_custom_emoji_id;
+          return buttonObj;
+        }),
+      );
+      await this.bot.api.sendMessage(numericId, text, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard } as never,
+      });
+      logger.info({ jid, rows: buttons.length }, 'Telegram message with buttons sent');
+    } catch (err) {
+      // Fallback: send as plain text without buttons
+      logger.warn({ jid, err }, 'Failed to send Telegram message with buttons, falling back');
+      try {
+        const numericId = jid.replace(/^tg:/, '');
+        const fallbackText =
+          text +
+          '\n\n' +
+          buttons
+            .flat()
+            .filter((b) => b.data)
+            .map((b) => `• ${b.text} → \`${b.data}\``)
+            .join('\n');
+        await this.bot.api.sendMessage(numericId, fallbackText);
+      } catch (fallbackErr) {
+        logger.error({ jid, fallbackErr }, 'Failed to send Telegram fallback message');
+      }
     }
   }
 

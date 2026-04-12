@@ -127,6 +127,82 @@ See the telegram-reactions skill (in the group's skills directory) for full sema
 );
 
 server.tool(
+  'send_message_with_buttons',
+  `Send a message with inline keyboard buttons. Buttons appear below the message text as tappable elements.
+
+WHEN TO USE: whenever you present choices to the user — drafts (create/cancel), yes/no confirmations,
+multi-option decisions (wiki/chat/skip), recommendations (do/defer/ignore).
+
+NATIVE COLORS (Bot API 9.4, February 2026) — use \`style\` field:
+• style: "success" — GREEN button (confirm / create / yes / send / ingest)
+• style: "danger"  — RED button   (cancel / delete / no / remove)
+• style: "primary" — BLUE button  (main action, neutral primary choice)
+• no style         — GREY button  (secondary / skip / details / later)
+
+EMOJI PREFIX — always add an emoji too, it works on older clients and reinforces meaning:
+• ✅ success  • ❌ danger  • ✍️ wiki  • 💬 chat  • ⏭ skip  • 🗑 delete  • ℹ️ info
+
+BUTTON LIMITS: max 4 buttons per row, max 4 rows. More = cluttered.
+MAX 1 "success" and 1 "danger" per row — don't stack same color.
+
+CALLBACK DATA: ≤ 64 bytes. Use format \`<action>:<payload>\` when needed (e.g. "task:create", "lint:6").
+Button taps arrive as synthetic messages: \`[Callback: <data>] on message <id>\`
+Treat them like confirmed actions — no need to ask again.`,
+  {
+    text: z.string().describe('Message text (Markdown supported: *bold*, _italic_, `code`)'),
+    buttons: z
+      .array(
+        z.array(
+          z.object({
+            text: z
+              .string()
+              .describe('Button label. Always include emoji prefix (✅ ❌ ✍️ etc.) AND set style for color.'),
+            data: z
+              .string()
+              .max(64)
+              .optional()
+              .describe('Callback data (≤ 64 bytes). Use format "action:payload".'),
+            url: z
+              .string()
+              .url()
+              .optional()
+              .describe('URL to open (alternative to callback data).'),
+            style: z
+              .enum(['success', 'danger', 'primary'])
+              .optional()
+              .describe('Bot API 9.4 native color: success=green, danger=red, primary=blue. Omit for default grey.'),
+          }),
+        ),
+      )
+      .describe('2D array of buttons: outer = rows, inner = buttons in each row. Max 4×4.'),
+    sender: z
+      .string()
+      .optional()
+      .describe('Your role/identity name (e.g. "Mila"). When set, messages appear from a dedicated bot in Telegram.'),
+  },
+  async (args) => {
+    writeIpcFile(MESSAGES_DIR, {
+      type: 'message_with_buttons',
+      chatJid,
+      text: args.text,
+      buttons: args.buttons,
+      sender: args.sender || undefined,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: 'Message with buttons sent.',
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
   'schedule_task',
   `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools. Returns the task ID for future reference. To modify an existing task, use update_task instead.
 
