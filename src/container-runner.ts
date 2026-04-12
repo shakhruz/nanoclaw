@@ -298,7 +298,10 @@ function buildContainerArgs(
     args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
   }
   if (integrationSecrets.TODOIST_API_TOKEN) {
-    args.push('-e', `TODOIST_API_TOKEN=${integrationSecrets.TODOIST_API_TOKEN}`);
+    args.push(
+      '-e',
+      `TODOIST_API_TOKEN=${integrationSecrets.TODOIST_API_TOKEN}`,
+    );
   }
 
   // Runtime-specific args for host gateway resolution

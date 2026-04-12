@@ -52,6 +52,7 @@ export class TelegramChannel implements Channel {
   private bot: Bot | null = null;
   private opts: TelegramChannelOpts;
   private botToken: string;
+  private botId: number | null = null;
 
   constructor(botToken: string, opts: TelegramChannelOpts) {
     this.botToken = botToken;
@@ -417,15 +418,90 @@ export class TelegramChannel implements Channel {
     this.bot.on('message:location', (ctx) => storeMedia(ctx, '[Location]'));
     this.bot.on('message:contact', (ctx) => storeMedia(ctx, '[Contact]'));
 
+    // Two-way emoji reactions channel — see
+    // groups/<group>/skills/telegram-reactions/SKILL.md for the full spec.
+    // Delivers newly added emoji reactions from registered chats as
+    // synthetic messages `[Reaction: X] on message Y` that the agent
+    // interprets as commands. Bot's own reactions are filtered out so
+    // Mila doesn't echo her own status signals as incoming commands.
+    this.bot.on('message_reaction', async (ctx) => {
+      const chatJid = `tg:${ctx.chat.id}`;
+      const group = this.opts.registeredGroups()[chatJid];
+      if (!group) return;
+
+      const reaction = ctx.messageReaction;
+      if (!reaction) return;
+
+      // Filter out the bot's own reactions — Telegram sometimes echoes them
+      // back as message_reaction updates (depending on polling config).
+      const user = reaction.user;
+      const reactorId = user?.id;
+      if (this.botId != null && reactorId === this.botId) return;
+
+      const timestamp = new Date(reaction.date * 1000).toISOString();
+      const senderName = user
+        ? user.first_name || user.username || user.id.toString()
+        : 'Unknown';
+      const sender = reactorId != null ? reactorId.toString() : '';
+
+      // Only deliver NEWLY added emojis (set difference new - old). Removed
+      // reactions are ignored — we don't model un-reactions as commands.
+      // grammy narrows `r.emoji` to the allowed-whitelist literal union when
+      // `r.type === 'emoji'`, which widens to `string` on assignment.
+      const oldEmojis = new Set<string>();
+      for (const r of reaction.old_reaction || []) {
+        if (r.type === 'emoji') oldEmojis.add(r.emoji);
+      }
+      const addedEmojis: string[] = [];
+      for (const r of reaction.new_reaction || []) {
+        if (r.type === 'emoji' && !oldEmojis.has(r.emoji)) {
+          addedEmojis.push(r.emoji);
+        }
+      }
+
+      if (addedEmojis.length === 0) return;
+
+      const isGroup =
+        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        undefined,
+        'telegram',
+        isGroup,
+      );
+
+      for (const emoji of addedEmojis) {
+        this.opts.onMessage(chatJid, {
+          id: `reaction-${reaction.message_id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          chat_jid: chatJid,
+          sender,
+          sender_name: senderName,
+          content: `[Reaction: ${emoji}] on message ${reaction.message_id}`,
+          timestamp,
+          is_from_me: false,
+        });
+      }
+    });
+
     // Handle errors gracefully
     this.bot.catch((err) => {
       logger.error({ err: err.message }, 'Telegram bot error');
     });
 
-    // Start polling — returns a Promise that resolves when started
+    // Start polling — returns a Promise that resolves when started.
+    // `allowed_updates` must explicitly include `message_reaction`; grammy's
+    // default set doesn't include it, so reactions wouldn't arrive otherwise.
     return new Promise<void>((resolve) => {
       this.bot!.start({
+        allowed_updates: [
+          'message',
+          'edited_message',
+          'callback_query',
+          'message_reaction',
+        ],
         onStart: (botInfo) => {
+          this.botId = botInfo.id;
           logger.info(
             { username: botInfo.username, id: botInfo.id },
             'Telegram bot connected',
@@ -438,6 +514,48 @@ export class TelegramChannel implements Channel {
         },
       });
     });
+  }
+
+  /**
+   * Send an emoji reaction to a specific message. Used by the
+   * `react_to_message` MCP tool so the agent can signal status (👀 / ⚡ /
+   * 👏 / 💔 etc.) without a full text reply. Telegram only allows a fixed
+   * whitelist of emoji for reactions; unsupported emoji will produce a
+   * `REACTION_INVALID` error which we log at warn level so the set can be
+   * tuned over time.
+   */
+  async reactToMessage(
+    jid: string,
+    messageId: string,
+    emoji: string,
+  ): Promise<void> {
+    if (!this.bot) {
+      logger.warn('Telegram bot not initialized (reactToMessage)');
+      return;
+    }
+    try {
+      const numericChatId = Number(jid.replace(/^tg:/, ''));
+      const numericMsgId = Number.parseInt(messageId, 10);
+      if (Number.isNaN(numericChatId) || Number.isNaN(numericMsgId)) {
+        logger.warn(
+          { jid, messageId },
+          'reactToMessage: invalid chat or message id',
+        );
+        return;
+      }
+      await this.bot.api.setMessageReaction(numericChatId, numericMsgId, [
+        { type: 'emoji', emoji: emoji as never },
+      ]);
+      logger.info(
+        { jid, messageId, emoji },
+        'Telegram reaction sent',
+      );
+    } catch (err) {
+      logger.warn(
+        { jid, messageId, emoji, err },
+        'Failed to send Telegram reaction (likely REACTION_INVALID — emoji not in Bot API whitelist)',
+      );
+    }
   }
 
   async sendMessage(

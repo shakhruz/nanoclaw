@@ -68,6 +68,65 @@ server.tool(
 );
 
 server.tool(
+  'react_to_message',
+  `Send an emoji reaction to a specific message in the chat. Use as a lightweight status signal or acknowledgment without sending a full text reply.
+
+CHANNEL SUPPORT: currently implemented for Telegram. On channels without reaction support the IPC is silently dropped at the host layer — check channel capabilities before relying on this tool for critical feedback.
+
+TELEGRAM WHITELIST: the Telegram Bot API only accepts reactions from a fixed emoji whitelist (~74 standard reactions). If the emoji is not in the whitelist, the reaction silently fails on the API side and is logged at warn level on the host.
+
+Status signals (when reacting to the user's message — agent → user):
+• 👀 — seen, starting to process
+• ⚡ — working on a long task (browser, research, big ingest)
+• 👏 — done successfully
+• 🤔 — need clarification from the user
+• 🫡 — scheduled / queued for later
+• ✍ — ingested into the wiki
+• 🙏 — repeating / retrying
+• 💔 — failed, could not complete
+• 🙊 — acknowledged silently, no text reply needed
+
+Commands (when the user reacts to the agent's message — these arrive as "[Reaction: X] on message Y" synthetic messages and should be interpreted as shortcut commands):
+• 👍 confirm last pending action    • 👎 reject / cancel
+• ❤ remember / ingest to wiki        • 🤩 repeat last action
+• 🔥 important / pin                  • 👌 mark Todoist task done
+• 🤬 stop / delete                    • 🤔 explain in more detail
+• 🫡 follow-up reminder               • 😴 quiet, no text reply
+
+See the telegram-reactions skill (in the group's skills directory) for full semantics and examples.`,
+  {
+    message_id: z
+      .string()
+      .describe(
+        'The message ID to react to. For incoming user messages, use the id field from the message. For your own previous messages, note the id at send time.',
+      ),
+    emoji: z
+      .string()
+      .describe(
+        'The emoji character to react with. Use one from the whitelist above — other emoji will silently fail.',
+      ),
+  },
+  async (args) => {
+    writeIpcFile(MESSAGES_DIR, {
+      type: 'react',
+      chatJid,
+      messageId: args.message_id,
+      emoji: args.emoji,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Reaction ${args.emoji} queued for message ${args.message_id}.`,
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
   'schedule_task',
   `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools. Returns the task ID for future reference. To modify an existing task, use update_task instead.
 

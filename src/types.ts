@@ -95,6 +95,11 @@ export interface Channel {
   setTyping?(jid: string, isTyping: boolean): Promise<void>;
   // Optional: sync group/chat names from the platform.
   syncGroups?(force: boolean): Promise<void>;
+  // Optional: send an emoji reaction to a specific message. Used by the
+  // `react_to_message` MCP tool so the agent can signal status or command
+  // acknowledgments without a full text reply. See the telegram-reactions
+  // skill doc in the relevant group for usage semantics.
+  reactToMessage?(jid: string, messageId: string, emoji: string): Promise<void>;
 }
 
 // Callback type that channels use to deliver inbound messages
