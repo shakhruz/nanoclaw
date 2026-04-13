@@ -307,6 +307,7 @@ function buildContainerArgs(
     'TODOIST_API_TOKEN',
     'APIFY_TOKEN',
     'OPENROUTER_API_KEY',
+    'ZERNIO_API_KEY',
   ]);
   if (integrationSecrets.PARALLEL_API_KEY) {
     args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
@@ -325,6 +326,9 @@ function buildContainerArgs(
       '-e',
       `OPENROUTER_API_KEY=${integrationSecrets.OPENROUTER_API_KEY}`,
     );
+  }
+  if (integrationSecrets.ZERNIO_API_KEY) {
+    args.push('-e', `ZERNIO_API_KEY=${integrationSecrets.ZERNIO_API_KEY}`);
   }
 
   // Runtime-specific args for host gateway resolution
