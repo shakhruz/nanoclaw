@@ -17,20 +17,34 @@ When user asks to:
 
 ## Workflow
 
-### Phase 1: Check Available Data
+### Phase 1: Check Available Data — FULL PIPELINE CHECK
 
 ```bash
 NAME="<client-name-or-username>"
-echo "=== Client Profile ===" && ls /workspace/group/wiki/entities/client-$NAME.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Instagram ===" && ls /workspace/group/wiki/entities/$NAME.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Audit ===" && ls /workspace/group/wiki/entities/$NAME-audit.md 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== Instagram Analysis ===" && ls /workspace/group/wiki/entities/$NAME.md 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== Instagram Audit ===" && ls /workspace/group/wiki/entities/$NAME-audit.md 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== Website Analysis ===" && ls /workspace/group/website-analysis/*/site-analysis.json 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== YouTube Analysis ===" && ls /workspace/group/youtube-analysis/*/channel-summary.json 2>/dev/null && echo "FOUND" || echo "MISSING"
 echo "=== Funnel Strategy ===" && ls /workspace/group/wiki/entities/$NAME-funnel-strategy.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Profile JSON ===" && ls /workspace/group/client-profiles/$NAME/profile.json 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== Client Profile ===" && ls /workspace/group/wiki/entities/client-$NAME.md 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== Okto Summary ===" && ls /workspace/group/instagram-analysis/$NAME/okto-summary.json 2>/dev/null && echo "FOUND" || echo "MISSING"
+echo "=== Media Catalog ===" && ls /workspace/group/wiki/media/instagram/$NAME/catalog.md 2>/dev/null && echo "FOUND" || echo "MISSING"
 ```
 
-**If client profile is missing:** "Профиль клиента не найден. Сначала создать? (нужны данные Instagram/Website/YouTube)"
+**CRITICAL: Do NOT generate a weak briefing.** If key analyses are missing, RUN THEM FIRST:
 
-**If some analyses exist but not all:** proceed with what's available, note gaps.
+| Missing | Action |
+|---------|--------|
+| Instagram Analysis | Run instagram-analyzer workflow (see skill) |
+| Instagram Audit | Run instagram-expert workflow (see skill) — read IG data, generate score card + recommendations |
+| Website Analysis | Extract URLs from okto-summary/bio → run website-analyzer workflow |
+| YouTube | Ask user for channel link → run youtube-analyzer workflow |
+| Funnel Strategy | Run funnel-strategist workflow — read all data, recommend 2-4 funnels with revenue projections |
+| Client Profile | Run client-profile workflow — merge all sources into unified profile |
+
+**Minimum required for a quality briefing:** Instagram Analysis + Instagram Audit + Funnel Strategy. Without these three, the briefing will be weak. Run them before proceeding.
+
+Send progress: "Проверяю готовность данных... Найдено: IG ✅, Audit ❌, YouTube ❌. Запускаю недостающие анализы..."
 
 ### Phase 1.5: Web Presence Discovery + Search Analysis
 
@@ -104,6 +118,14 @@ Read every available file. Build mental model of:
 - What assets exist for funnels
 
 ### Phase 3: Generate Sales Briefing
+
+**IMPORTANT:** The briefing MUST include specific data from:
+- `wiki/entities/<name>-audit.md` → Score Card, bio recommendations, content strategy findings
+- `wiki/entities/<name>-funnel-strategy.md` → Recommended funnels with revenue projections
+- `instagram-analysis/<name>/okto-summary.json` → Services, pricing, engagement, photos
+- `wiki/media/instagram/<name>/catalog.md` → Available photo assets by category
+
+If these files exist, READ them and incorporate their findings. Do NOT generate generic advice — use the actual analyzed data with real numbers.
 
 Send via `send_message` in multiple messages (Telegram 4096 char limit):
 
@@ -231,9 +253,12 @@ Send via `send_message` in multiple messages (Telegram 4096 char limit):
 Всё это уже собрано и готово к использованию в воронке.
 ```
 
-### Phase 4: Create Demo Funnel (optional)
+### Phase 4: Create Demo Funnel
 
-If user says "создай демо-воронку" or "prepare demo":
+Always propose creating a demo funnel as part of prep. Send message:
+"Хочешь создать демо-воронку для показа на встрече? У меня есть все данные: фото, цены, услуги."
+
+If user agrees (or by default if funnel-strategy exists):
 
 1. Read client-profile.json → pick Quick Win funnel
 2. Select best author photo (banner-worthy from catalog)
