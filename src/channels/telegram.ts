@@ -503,8 +503,7 @@ export class TelegramChannel implements Channel {
       });
 
       const data = ctx.callbackQuery.data ?? '';
-      const origMsgId =
-        ctx.callbackQuery.message?.message_id?.toString() ?? '';
+      const origMsgId = ctx.callbackQuery.message?.message_id?.toString() ?? '';
       const timestamp = new Date().toISOString();
       const senderName =
         ctx.from?.first_name ||
@@ -601,10 +600,7 @@ export class TelegramChannel implements Channel {
       await this.bot.api.setMessageReaction(numericChatId, numericMsgId, [
         { type: 'emoji', emoji: emoji as never },
       ]);
-      logger.info(
-        { jid, messageId, emoji },
-        'Telegram reaction sent',
-      );
+      logger.info({ jid, messageId, emoji }, 'Telegram reaction sent');
     } catch (err) {
       logger.warn(
         { jid, messageId, emoji, err },
@@ -641,7 +637,8 @@ export class TelegramChannel implements Channel {
             callback_data: btn.data ?? '',
           };
           if (btn.style) buttonObj.style = btn.style;
-          if (btn.icon_custom_emoji_id) buttonObj.icon_custom_emoji_id = btn.icon_custom_emoji_id;
+          if (btn.icon_custom_emoji_id)
+            buttonObj.icon_custom_emoji_id = btn.icon_custom_emoji_id;
           return buttonObj;
         }),
       );
@@ -649,10 +646,16 @@ export class TelegramChannel implements Channel {
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard } as never,
       });
-      logger.info({ jid, rows: buttons.length }, 'Telegram message with buttons sent');
+      logger.info(
+        { jid, rows: buttons.length },
+        'Telegram message with buttons sent',
+      );
     } catch (err) {
       // Fallback: send as plain text without buttons
-      logger.warn({ jid, err }, 'Failed to send Telegram message with buttons, falling back');
+      logger.warn(
+        { jid, err },
+        'Failed to send Telegram message with buttons, falling back',
+      );
       try {
         const numericId = jid.replace(/^tg:/, '');
         const fallbackText =
@@ -665,7 +668,10 @@ export class TelegramChannel implements Channel {
             .join('\n');
         await this.bot.api.sendMessage(numericId, fallbackText);
       } catch (fallbackErr) {
-        logger.error({ jid, fallbackErr }, 'Failed to send Telegram fallback message');
+        logger.error(
+          { jid, fallbackErr },
+          'Failed to send Telegram fallback message',
+        );
       }
     }
   }

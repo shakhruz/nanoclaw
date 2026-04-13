@@ -38,21 +38,19 @@ export interface IpcDeps {
   sendMessageWithButtons?: (
     jid: string,
     text: string,
-    buttons: Array<Array<{
-      text: string;
-      data?: string;
-      url?: string;
-      style?: 'success' | 'danger' | 'primary'; // Bot API 9.4
-      icon_custom_emoji_id?: string;             // Bot API 9.4
-    }>>,
+    buttons: Array<
+      Array<{
+        text: string;
+        data?: string;
+        url?: string;
+        style?: 'success' | 'danger' | 'primary'; // Bot API 9.4
+        icon_custom_emoji_id?: string; // Bot API 9.4
+      }>
+    >,
   ) => Promise<void>;
   // Optional: send a file (photo, document) to a chat. The filePath is
   // an absolute host path. Only populated when a channel implements sendFile.
-  sendFile?: (
-    jid: string,
-    filePath: string,
-    caption?: string,
-  ) => Promise<void>;
+  sendFile?: (jid: string, filePath: string, caption?: string) => Promise<void>;
 }
 
 let ipcWatcherRunning = false;
@@ -133,8 +131,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 // into this chat.
                 const targetGroup = registeredGroups[data.chatJid];
                 const authorized =
-                  isMain ||
-                  (targetGroup && targetGroup.folder === sourceGroup);
+                  isMain || (targetGroup && targetGroup.folder === sourceGroup);
                 if (!authorized) {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
@@ -191,7 +188,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     data.buttons,
                   );
                   logger.info(
-                    { chatJid: data.chatJid, sourceGroup, rows: data.buttons.length },
+                    {
+                      chatJid: data.chatJid,
+                      sourceGroup,
+                      rows: data.buttons.length,
+                    },
                     'IPC message with buttons sent',
                   );
                 }
@@ -219,7 +220,9 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   const containerPrefix = '/workspace/group/';
                   let hostPath = data.filePath;
                   if (data.filePath.startsWith(containerPrefix)) {
-                    const relativePath = data.filePath.slice(containerPrefix.length);
+                    const relativePath = data.filePath.slice(
+                      containerPrefix.length,
+                    );
                     hostPath = path.join(
                       resolveGroupFolderPath(sourceGroup),
                       relativePath,
@@ -227,7 +230,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   }
                   if (!fs.existsSync(hostPath)) {
                     logger.warn(
-                      { chatJid: data.chatJid, hostPath, originalPath: data.filePath },
+                      {
+                        chatJid: data.chatJid,
+                        hostPath,
+                        originalPath: data.filePath,
+                      },
                       'IPC send_file — file not found on host',
                     );
                   } else {
@@ -237,7 +244,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                       data.caption || undefined,
                     );
                     logger.info(
-                      { chatJid: data.chatJid, sourceGroup, filePath: hostPath },
+                      {
+                        chatJid: data.chatJid,
+                        sourceGroup,
+                        filePath: hostPath,
+                      },
                       'IPC file sent',
                     );
                   }
