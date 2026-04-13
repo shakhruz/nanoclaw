@@ -6,7 +6,7 @@ import { CronExpressionParser } from 'cron-parser';
 import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
-import { isValidGroupFolder } from './group-folder.js';
+import { isValidGroupFolder, resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 
@@ -45,6 +45,13 @@ export interface IpcDeps {
       style?: 'success' | 'danger' | 'primary'; // Bot API 9.4
       icon_custom_emoji_id?: string;             // Bot API 9.4
     }>>,
+  ) => Promise<void>;
+  // Optional: send a file (photo, document) to a chat. The filePath is
+  // an absolute host path. Only populated when a channel implements sendFile.
+  sendFile?: (
+    jid: string,
+    filePath: string,
+    caption?: string,
   ) => Promise<void>;
 }
 
@@ -187,6 +194,53 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     { chatJid: data.chatJid, sourceGroup, rows: data.buttons.length },
                     'IPC message with buttons sent',
                   );
+                }
+              } else if (
+                data.type === 'send_file' &&
+                data.chatJid &&
+                data.filePath
+              ) {
+                const targetGroup = registeredGroups[data.chatJid];
+                const authorized =
+                  isMain || (targetGroup && targetGroup.folder === sourceGroup);
+                if (!authorized) {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized IPC send_file attempt blocked',
+                  );
+                } else if (!deps.sendFile) {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'IPC send_file dropped — channel does not support file sending',
+                  );
+                } else {
+                  // Translate container path to host path
+                  // /workspace/group/ inside container = groups/<folder>/ on host
+                  const containerPrefix = '/workspace/group/';
+                  let hostPath = data.filePath;
+                  if (data.filePath.startsWith(containerPrefix)) {
+                    const relativePath = data.filePath.slice(containerPrefix.length);
+                    hostPath = path.join(
+                      resolveGroupFolderPath(sourceGroup),
+                      relativePath,
+                    );
+                  }
+                  if (!fs.existsSync(hostPath)) {
+                    logger.warn(
+                      { chatJid: data.chatJid, hostPath, originalPath: data.filePath },
+                      'IPC send_file — file not found on host',
+                    );
+                  } else {
+                    await deps.sendFile(
+                      data.chatJid,
+                      hostPath,
+                      data.caption || undefined,
+                    );
+                    logger.info(
+                      { chatJid: data.chatJid, sourceGroup, filePath: hostPath },
+                      'IPC file sent',
+                    );
+                  }
                 }
               }
               fs.unlinkSync(filePath);

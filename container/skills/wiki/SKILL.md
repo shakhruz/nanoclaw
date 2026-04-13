@@ -34,6 +34,8 @@ You own this entirely. Structure:
 | `wiki/sources/` | One summary page per ingested source. Date-prefixed filenames for natural sorting. |
 | `wiki/journal/` | `YYYY-MM-DD.md` daily entries. Created on demand. |
 | `wiki/comparisons/` | Comparison pages — only when comparison is the natural framing. |
+| `wiki/media/` | Media files (images, screenshots) with per-source catalogs. See Media Catalog below. |
+| `wiki/media-index.json` | Machine-readable index of all media catalogs for search and Okto integration. |
 
 ### Layer 3: This file — schema
 Rules of the game. When in doubt, this file wins.
@@ -50,7 +52,7 @@ Rules of the game. When in doubt, this file wins.
 ```yaml
 ---
 title: Название страницы
-type: concept | entity | person | project | source-summary | journal | comparison | note
+type: concept | entity | person | project | source-summary | journal | comparison | note | media-catalog
 created: 2026-04-11
 updated: 2026-04-11
 sources: []        # paths to raw files in sources/ (layer 1)
@@ -157,10 +159,112 @@ When in doubt, ask: «занести в вики или оставить как 
 
 The Telegram channel auto-downloads media to `/workspace/group/attachments/`. You'll see markers in messages:
 
-- `[Photo] /workspace/group/attachments/photo_<id>.jpg` — image. Use `tesseract <path> - -l rus+eng` if available, or `agent-browser open file://<path>` to view. Then ingest as `image` source.
+- `[Photo] /workspace/group/attachments/photo_<id>.jpg` — image. Analyze visually via OpenRouter Gemini Flash (see Image Analysis below). Then ingest as `image` source.
 - `[Document: filename.pdf] /workspace/group/attachments/...` — document. Use `pdftotext <path> -` if available. Save extracted text to `sources/`, ingest.
-- `[Voice message] /workspace/group/attachments/voice_<id>.oga` — audio file. You don't have transcription tools natively. Ask Шахруз: "Это голосовое — приложить как сырой файл, или ты пришлёшь транскрипт через Plaude?"
+- `[Voice message] /workspace/group/attachments/voice_<id>.oga` — audio file. **Transcribe automatically** via Deepgram (see Audio/Video Transcription below). Save transcript to `sources/YYYY-MM-DD-voice-<topic>.md`, ingest as type `voice-transcript`. Do NOT ask the user for a transcript — do it yourself.
 - **Plaude transcripts** arrive as long text messages. Treat them as full source: save to `sources/YYYY-MM-DD-voice-<topic>.md`, ingest as type `voice-transcript`.
+
+## Image Analysis (Vision)
+
+When you receive or download images, analyze them visually — not just OCR. Use OpenRouter Gemini Flash to understand what's in the image:
+
+```bash
+B64=$(base64 -i <IMAGE_PATH>)
+curl -s -X POST "https://openrouter.ai/api/v1/chat/completions" \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"google/gemini-2.0-flash-001","messages":[{"role":"user","content":[
+    {"type":"image_url","image_url":{"url":"data:image/jpeg;base64,'"$B64"'"}},
+    {"type":"text","text":"Describe this image in detail: what is shown, who is in it, colors, setting, text visible, style. Return a structured description."}]}]}'
+```
+
+Use this for: photos from Telegram, downloaded images, screenshots. The description goes into the source-summary or entity page. If the image contains a person, note their appearance for potential face matching later.
+
+## Audio/Video Transcription
+
+**Never ask the user for a transcript.** Transcribe audio and video files yourself using Deepgram Nova-2:
+
+```bash
+# Read Deepgram key from group config
+DEEPGRAM_KEY=$(node -e "try{const c=JSON.parse(require('fs').readFileSync('/workspace/group/config.json','utf8'));console.log(c.deepgram_api_key||c.deepgramApiKey||'')}catch{console.log('')}")
+
+# For .oga/.ogg voice messages — convert to WAV first
+ffmpeg -i /workspace/group/attachments/voice_<id>.oga -acodec pcm_s16le -ar 16000 -ac 1 /tmp/voice.wav 2>/dev/null
+curl -s -X POST "https://api.deepgram.com/v1/listen?detect_language=true&model=nova-2&smart_format=true" \
+  -H "Authorization: Token $DEEPGRAM_KEY" -H "Content-Type: audio/wav" \
+  --data-binary @/tmp/voice.wav
+
+# For video files — extract audio first
+ffmpeg -i video.mp4 -vn -acodec pcm_s16le -ar 16000 -ac 1 /tmp/audio.wav 2>/dev/null
+# Then transcribe the same way (detect_language=true handles ru/en/uz automatically)
+```
+
+Save transcript to `sources/YYYY-MM-DD-voice-<topic>.md` or `sources/YYYY-MM-DD-video-<topic>.md`, then ingest normally.
+
+## Media Catalog
+
+The wiki stores media files with structured metadata for later retrieval (e.g., by Okto agent for funnel construction).
+
+### Structure
+```
+wiki/media/                           # All media assets
+wiki/media/<source>/<name>/           # Per-analysis directory
+wiki/media/<source>/<name>/catalog.md # Metadata catalog page
+wiki/media/<source>/<name>/author/    # Classified images
+wiki/media/<source>/<name>/products/
+wiki/media/<source>/<name>/...
+wiki/media-index.json                 # Global index
+wiki/.gitignore                       # Excludes binary media from git
+```
+
+**IMPORTANT:** Binary media files (jpg, png, mp4, wav) are NOT tracked in git — only catalog.md and media-index.json are committed. Add to `wiki/.gitignore`:
+```
+media/**/*.jpg
+media/**/*.jpeg
+media/**/*.png
+media/**/*.mp4
+media/**/*.wav
+```
+
+### Media Catalog Page (type: media-catalog)
+```yaml
+---
+title: "Media Catalog — <name>"
+type: media-catalog
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+source: instagram|screenshot|upload|telegram
+total_images: N
+color_palette: ["#hex1", "#hex2"]
+tags: [instagram, sales-funnel]
+confidence: high
+---
+```
+Body contains tables per category: File | Description | Colors | Quality | Funnel Use | Selected.
+
+### media-index.json
+```json
+{
+  "version": 1,
+  "lastUpdated": "YYYY-MM-DD",
+  "catalogs": [{
+    "source": "instagram", "name": "<username>",
+    "path": "media/instagram/<username>/catalog.md",
+    "businessType": "services",
+    "colorPalette": ["#hex"],
+    "imageCount": 25,
+    "categories": {"author":4,"products":6,"venue":3},
+    "analyzedAt": "YYYY-MM-DD"
+  }],
+  "totalImages": 25
+}
+```
+
+### Media Queries
+When asked "show photos of @username" or "find green images" or "author photos for banners":
+1. Read `wiki/media-index.json` to find relevant catalogs
+2. Read the catalog page for filtered results
+3. Send files via `send_file` MCP tool
+4. Append to log: `## [YYYY-MM-DD] query | media: <question>`
 
 ## Git
 

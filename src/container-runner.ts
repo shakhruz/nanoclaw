@@ -305,6 +305,8 @@ function buildContainerArgs(
   const integrationSecrets = readEnvFile([
     'PARALLEL_API_KEY',
     'TODOIST_API_TOKEN',
+    'APIFY_TOKEN',
+    'OPENROUTER_API_KEY',
   ]);
   if (integrationSecrets.PARALLEL_API_KEY) {
     args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
@@ -313,6 +315,15 @@ function buildContainerArgs(
     args.push(
       '-e',
       `TODOIST_API_TOKEN=${integrationSecrets.TODOIST_API_TOKEN}`,
+    );
+  }
+  if (integrationSecrets.APIFY_TOKEN) {
+    args.push('-e', `APIFY_TOKEN=${integrationSecrets.APIFY_TOKEN}`);
+  }
+  if (integrationSecrets.OPENROUTER_API_KEY) {
+    args.push(
+      '-e',
+      `OPENROUTER_API_KEY=${integrationSecrets.OPENROUTER_API_KEY}`,
     );
   }
 

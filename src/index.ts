@@ -841,6 +841,21 @@ async function main(): Promise<void> {
       }
       await channel.sendMessageWithButtons(jid, text, buttons);
     },
+    sendFile: async (jid, filePath, caption) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) {
+        logger.warn({ jid }, 'sendFile: no channel owns JID');
+        return;
+      }
+      if (!channel.sendFile) {
+        logger.warn(
+          { jid, channel: channel.name },
+          'sendFile: channel does not support file sending, dropping',
+        );
+        return;
+      }
+      await channel.sendFile(jid, filePath, caption);
+    },
     registeredGroups: () => registeredGroups,
     registerGroup,
     syncGroups: async (force: boolean) => {
