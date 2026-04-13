@@ -74,12 +74,21 @@ curl -sL -o $WD/channel-avatar.jpg "$AVATAR_URL"
 **Face detection** via OpenRouter (same as Instagram):
 Analyze avatar → save to `$WD/face-reference.json`.
 
-**Browser screenshot** (optional, if auth available):
+**Browser screenshots** (take multiple views of the channel):
 ```bash
 for f in /workspace/group/*-auth.json; do [ -f "$f" ] && agent-browser state load "$f"; done
 agent-browser open "https://www.youtube.com/@<HANDLE>"
 agent-browser wait --timeout 5000
-agent-browser screenshot --full $WD/screenshots/channel-page.png
+agent-browser screenshot --full $WD/screenshots/channel-full.png
+agent-browser click "Videos"
+agent-browser wait --timeout 3000
+agent-browser screenshot $WD/screenshots/channel-videos.png
+```
+If "Playlists" tab exists:
+```bash
+agent-browser click "Playlists"
+agent-browser wait --timeout 3000
+agent-browser screenshot $WD/screenshots/channel-playlists.png
 ```
 
 Send progress: "Канал: <name>, <subs> подписчиков. Сканирую видео..."
@@ -145,18 +154,7 @@ curl -s -X POST \
   -d @/tmp/transcript-input.json > $WD/raw-transcripts.json
 ```
 
-**Step 2 — For videos WITHOUT transcripts, use Deepgram:**
-Check which videos returned empty transcripts. For top 3-5 of those:
-```bash
-# Download audio via yt-dlp or streamers/youtube-video-downloader
-# Then extract audio and transcribe
-DEEPGRAM_KEY=$(node -e "try{const c=JSON.parse(require('fs').readFileSync('/workspace/group/config.json','utf8'));console.log(c.deepgram_api_key||c.deepgramApiKey||'')}catch{console.log('')}")
-
-ffmpeg -i $WD/videos/video-<N>.mp4 -vn -acodec pcm_s16le -ar 16000 -ac 1 $WD/transcripts/video-<N>.wav 2>/dev/null
-curl -s -X POST "https://api.deepgram.com/v1/listen?detect_language=true&model=nova-2&smart_format=true" \
-  -H "Authorization: Token $DEEPGRAM_KEY" -H "Content-Type: audio/wav" \
-  --data-binary @$WD/transcripts/video-<N>.wav > $WD/transcripts/video-<N>-deepgram.json
-```
+**Step 2 — Videos without transcripts:** Skip. Only analyze videos that have YouTube auto-captions. Note count of skipped videos in summary.
 
 **Step 3 — Compile all transcripts:**
 Save consolidated `$WD/all-transcripts.json`:
@@ -248,9 +246,48 @@ confidence: high
 
 Sections: Overview, Channel Metrics, Content Strategy (topics, formats, frequency), Top Videos (with transcripts), Audience (from comments), Teaching Style, Services & Products Mentioned, Video Assets for Funnels.
 
-**7d. Ingest transcripts as wiki sources:**
-Each major video transcript → `wiki/sources/YYYY-MM-DD-yt-<title-slug>.md`
-This makes video content searchable in wiki queries.
+**7d. Ingest transcripts as wiki sources (CRITICAL):**
+
+For each video with a non-empty transcript (top 10-15 by relevance), create a wiki source page:
+
+```bash
+# For each important video transcript:
+cat > /workspace/group/wiki/sources/YYYY-MM-DD-yt-<title-slug>.md << 'EOF'
+---
+title: "YT: <video title>"
+type: source-summary
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+sources: ["../../youtube-analysis/<channel>/all-transcripts.json"]
+related: ["[[entities/<channel>-youtube]]"]
+tags: [youtube, transcript, <topic-tags>]
+confidence: high
+---
+
+# <Video Title>
+
+**URL:** <video url>
+**Views:** <N> | **Duration:** <N> min
+**Topic:** <main topic>
+
+## Key Points
+- <bullet 1>
+- <bullet 2>
+- <bullet 3>
+
+## Services/Products Mentioned
+<extracted from transcript>
+
+## Quotes Worth Using in Funnel
+> "<notable quote 1>"
+> "<notable quote 2>"
+
+## Full Transcript
+<paste full transcript text>
+EOF
+```
+
+This is the most valuable step — it makes 150K+ chars of video content searchable through wiki queries. Without it, the transcripts sit unused in a JSON file.
 
 **7e. .gitignore for media, update index + log + git commit.**
 
