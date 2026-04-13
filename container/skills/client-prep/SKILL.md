@@ -32,6 +32,68 @@ echo "=== Profile JSON ===" && ls /workspace/group/client-profiles/$NAME/profile
 
 **If some analyses exist but not all:** proceed with what's available, note gaps.
 
+### Phase 1.5: Web Presence Discovery + Search Analysis
+
+**1. Ask user for additional links:**
+Send message: "Есть ли ссылки на другие соцсети клиента? (YouTube, Facebook, TikTok, LinkedIn, VK, Telegram канал). Если нет — я поищу сам(а)."
+If user provides links → note them for analysis. Don't wait long — proceed with search.
+
+**2. Search client in Google and Yandex:**
+
+Use `mcp__parallel-search__*` if available, otherwise `agent-browser`:
+
+```bash
+# Google searches (via Parallel Search or agent-browser)
+# Search queries to run:
+# 1. "<client name> <niche> <city>"
+# 2. "<client name> instagram"  
+# 3. "<website domain>"
+# 4. "<client name> отзывы"
+```
+
+For Yandex (agent-browser):
+```bash
+agent-browser open "https://yandex.ru/search/?text=<client+name>+<niche>+<city>"
+agent-browser wait --timeout 5000
+agent-browser screenshot $WD/screenshots/yandex-search.png
+agent-browser get text > $WD/yandex-results.txt
+```
+
+For Google (agent-browser):
+```bash
+agent-browser open "https://google.com/search?q=<client+name>+<niche>+<city>"
+agent-browser wait --timeout 5000
+agent-browser screenshot $WD/screenshots/google-search.png
+agent-browser get text > $WD/google-results.txt
+```
+
+**3. Analyze search results:**
+- What appears on page 1? (site, socials, reviews, directories, competitors)
+- Google Knowledge Panel present?
+- Yandex business card present?
+- Negative results? (complaints, bad reviews)
+- Client's site position for key queries
+- Competitors appearing for same queries
+
+**4. Build platform presence map:**
+From search results + bio links + website links → discover all platforms:
+
+```
+| Platform | URL | Status | Notes |
+|----------|-----|--------|-------|
+| Instagram | @username | Analyzed | 1,344 followers |
+| YouTube | @channel | Found, not analyzed | From Google search |
+| Telegram | @channel | Found in bio | Channel link |
+| Facebook | /page | Found in search | |
+| TikTok | — | Not found | |
+| LinkedIn | — | Not found | |
+| VK | /group | Found in Yandex | |
+| Website | domain.uz | Analyzed | |
+| 2GIS/Yandex Maps | — | Found/Not found | Business listing |
+```
+
+Offer to analyze newly discovered platforms: "Нашёл YouTube канал — запустить анализ?"
+
 ### Phase 2: Read All Intelligence
 
 Read every available file. Build mental model of:
@@ -63,7 +125,36 @@ Send via `send_message` in multiple messages (Telegram 4096 char limit):
 <demographics, pain points, buying behavior>
 ```
 
-**Message 2 — Strengths & Weaknesses:**
+**Message 2 — Web Presence & Search:**
+```
+*🔍 ПРИСУТСТВИЕ В ИНТЕРНЕТЕ*
+
+*Платформы:*
+✅ Instagram: @username (проанализирован)
+✅ Сайт: domain.uz (проанализирован)
+⬜ YouTube: @channel (найден, не проанализирован)
+⬜ Telegram: @channel (найден в био)
+❌ TikTok: не найден
+❌ LinkedIn: не найден
+❌ Facebook: не найден
+
+*Google (запрос "<имя> <ниша> <город>"):*
+• Позиция сайта: #<N> / не найден
+• Knowledge Panel: есть/нет
+• Что на первой странице: <описание>
+• Конкуренты в выдаче: <кто занимает топ>
+
+*Yandex (тот же запрос):*
+• Позиция: #<N> / не найден
+• Карточка организации: есть/нет
+• Яндекс.Карты: есть/нет
+
+⚠️ *SEO-возможность:*
+"По запросу '<ключевой запрос>' вас не находят — 
+первые позиции занимают <конкуренты>. Воронка + контент исправят это."
+```
+
+**Message 3 — Strengths & Weaknesses:**
 ```
 *АНАЛИЗ ВОЗМОЖНОСТЕЙ*
 
@@ -81,7 +172,7 @@ Send via `send_message` in multiple messages (Telegram 4096 char limit):
 "Вы теряете примерно $<X>/мес потому что <specific problem with numbers>"
 ```
 
-**Message 3 — Talking Points:**
+**Message 4 — Talking Points:**
 ```
 *КОЗЫРИ ДЛЯ ВСТРЕЧИ*
 
@@ -107,7 +198,7 @@ Send via `send_message` in multiple messages (Telegram 4096 char limit):
 "Понимаю. Пока думаете — конкуренты запускают свои воронки. Вот что изменится через 30 дней если начнём сейчас: <specific projection>"
 ```
 
-**Message 4 — Recommended Funnels:**
+**Message 5 — Recommended Funnels:**
 ```
 *РЕКОМЕНДУЕМЫЕ ВОРОНКИ*
 
@@ -127,7 +218,7 @@ Send via `send_message` in multiple messages (Telegram 4096 char limit):
 💰 *Суммарный потенциал: $<total>/мес*
 ```
 
-**Message 5 — Available Assets:**
+**Message 6 — Available Assets:**
 ```
 *ГОТОВЫЕ АССЕТЫ*
 
