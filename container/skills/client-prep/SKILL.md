@@ -5,299 +5,95 @@ description: Pre-meeting preparation — assembles all client intelligence into 
 
 # Client Prep — Pre-Meeting Sales Briefing
 
-Prepare for a client meeting by assembling all collected intelligence into an actionable briefing. Gives you "козыри" — context, analysis, strategy, and optionally a ready demo funnel.
+Prepare for a client meeting by assembling all collected intelligence into an actionable briefing with context, analysis, strategy, and optionally a ready demo funnel.
 
 ## Trigger
 
-When user asks to:
-- "подготовь меня к встрече с @username"
-- "клиент-преп", "client prep"
-- "козыри на @username"
-- "briefing for meeting with..."
+"подготовь меня к встрече с @username", "клиент-преп", "client prep", "козыри на @username", "briefing for meeting with..."
 
 ## Workflow
 
-### Phase 1: Check Available Data — FULL PIPELINE CHECK
+### Phase 1: Check Available Data
 
 ```bash
 NAME="<client-name-or-username>"
-echo "=== Instagram Analysis ===" && ls /workspace/group/wiki/entities/$NAME.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Instagram Audit ===" && ls /workspace/group/wiki/entities/$NAME-audit.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Website Analysis ===" && ls /workspace/group/website-analysis/*/site-analysis.json 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== YouTube Analysis ===" && ls /workspace/group/youtube-analysis/*/channel-summary.json 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Funnel Strategy ===" && ls /workspace/group/wiki/entities/$NAME-funnel-strategy.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Client Profile ===" && ls /workspace/group/wiki/entities/client-$NAME.md 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Okto Summary ===" && ls /workspace/group/instagram-analysis/$NAME/okto-summary.json 2>/dev/null && echo "FOUND" || echo "MISSING"
-echo "=== Media Catalog ===" && ls /workspace/group/wiki/media/instagram/$NAME/catalog.md 2>/dev/null && echo "FOUND" || echo "MISSING"
+for f in entities/$NAME.md entities/$NAME-audit.md entities/$NAME-funnel-strategy.md entities/client-$NAME.md; do
+  echo "$f: $([ -f /workspace/group/wiki/$f ] && echo FOUND || echo MISSING)"
+done
+for d in website-analysis/*/site-analysis.json youtube-analysis/*/channel-summary.json; do
+  echo "$d: $(ls /workspace/group/$d 2>/dev/null && echo FOUND || echo MISSING)"
+done
+echo "okto-summary: $([ -f /workspace/group/instagram-analysis/$NAME/okto-summary.json ] && echo FOUND || echo MISSING)"
+echo "media-catalog: $([ -f /workspace/group/wiki/media/instagram/$NAME/catalog.md ] && echo FOUND || echo MISSING)"
 ```
 
-**CRITICAL: Do NOT generate a weak briefing.** If key analyses are missing, RUN THEM FIRST:
+**CRITICAL: Do NOT generate a weak briefing.** If key analyses are missing, run them first:
 
 | Missing | Action |
 |---------|--------|
-| Instagram Analysis | Run instagram-analyzer workflow (see skill) |
-| Instagram Audit | Run instagram-expert workflow (see skill) — read IG data, generate score card + recommendations |
-| Website Analysis | Extract URLs from okto-summary/bio → run website-analyzer workflow |
-| YouTube | Ask user for channel link → run youtube-analyzer workflow |
-| Funnel Strategy | Run funnel-strategist workflow — read all data, recommend 2-4 funnels with revenue projections |
-| Client Profile | Run client-profile workflow — merge all sources into unified profile |
+| Instagram Analysis | Run instagram-analyzer |
+| Instagram Audit | Run instagram-expert |
+| Website Analysis | Extract URLs from okto-summary/bio, run website-analyzer |
+| YouTube | Ask user for channel link, run youtube-analyzer |
+| Funnel Strategy | Run funnel-strategist |
+| Client Profile | Run client-profile workflow |
 
-**Minimum required for a quality briefing:** Instagram Analysis + Instagram Audit + Funnel Strategy. Without these three, the briefing will be weak. Run them before proceeding.
+**Minimum required:** Instagram Analysis + Instagram Audit + Funnel Strategy.
 
 Send progress: "Проверяю готовность данных... Найдено: IG ✅, Audit ❌, YouTube ❌. Запускаю недостающие анализы..."
 
 ### Phase 1.5: Web Presence Discovery + Search Analysis
 
-**1. Ask user for additional links:**
-Send message: "Есть ли ссылки на другие соцсети клиента? (YouTube, Facebook, TikTok, LinkedIn, VK, Telegram канал). Если нет — я поищу сам(а)."
-If user provides links → note them for analysis. Don't wait long — proceed with search.
+**1.** Ask user for additional social links (YouTube, Facebook, TikTok, LinkedIn, VK, Telegram). Don't wait long — proceed with search.
 
-**2. Search client in Google and Yandex:**
+**2.** Search via `mcp__parallel-search__*` if available, otherwise `agent-browser`. Queries: `"<name> <niche> <city>"`, `"<name> instagram"`, `"<domain>"`, `"<name> отзывы"`. Run for both Google and Yandex.
 
-Use `mcp__parallel-search__*` if available, otherwise `agent-browser`:
+**3.** Analyze: page 1 results, Knowledge Panel / Yandex business card, negative results, site position, competitors in SERP.
 
-```bash
-# Google searches (via Parallel Search or agent-browser)
-# Search queries to run:
-# 1. "<client name> <niche> <city>"
-# 2. "<client name> instagram"  
-# 3. "<website domain>"
-# 4. "<client name> отзывы"
-```
+**4.** Build platform presence map (table: Platform | URL | Status | Notes) covering Instagram, YouTube, Telegram, Facebook, TikTok, LinkedIn, VK, Website, 2GIS/Yandex Maps.
 
-For Yandex (agent-browser):
-```bash
-agent-browser open "https://yandex.ru/search/?text=<client+name>+<niche>+<city>"
-agent-browser wait --timeout 5000
-agent-browser screenshot $WD/screenshots/yandex-search.png
-agent-browser get text > $WD/yandex-results.txt
-```
-
-For Google (agent-browser):
-```bash
-agent-browser open "https://google.com/search?q=<client+name>+<niche>+<city>"
-agent-browser wait --timeout 5000
-agent-browser screenshot $WD/screenshots/google-search.png
-agent-browser get text > $WD/google-results.txt
-```
-
-**3. Analyze search results:**
-- What appears on page 1? (site, socials, reviews, directories, competitors)
-- Google Knowledge Panel present?
-- Yandex business card present?
-- Negative results? (complaints, bad reviews)
-- Client's site position for key queries
-- Competitors appearing for same queries
-
-**4. Build platform presence map:**
-From search results + bio links + website links → discover all platforms:
-
-```
-| Platform | URL | Status | Notes |
-|----------|-----|--------|-------|
-| Instagram | @username | Analyzed | 1,344 followers |
-| YouTube | @channel | Found, not analyzed | From Google search |
-| Telegram | @channel | Found in bio | Channel link |
-| Facebook | /page | Found in search | |
-| TikTok | — | Not found | |
-| LinkedIn | — | Not found | |
-| VK | /group | Found in Yandex | |
-| Website | domain.uz | Analyzed | |
-| 2GIS/Yandex Maps | — | Found/Not found | Business listing |
-```
-
-Offer to analyze newly discovered platforms: "Нашёл YouTube канал — запустить анализ?"
+Offer to analyze newly discovered platforms.
 
 ### Phase 2: Read All Intelligence
 
-Read every available file. Build mental model of:
-- Who is this person/business
-- What they sell, to whom, at what price
-- What works well (strengths to acknowledge)
-- What's broken (our opportunity to sell)
-- What assets exist for funnels
+Read every available file. Build mental model of: who they are, what they sell/to whom/at what price, strengths (to acknowledge), weaknesses (our opportunity), existing assets for funnels.
 
 ### Phase 3: Generate Sales Briefing
 
-**IMPORTANT:** The briefing MUST include specific data from:
-- `wiki/entities/<name>-audit.md` → Score Card, bio recommendations, content strategy findings
-- `wiki/entities/<name>-funnel-strategy.md` → Recommended funnels with revenue projections
-- `instagram-analysis/<name>/okto-summary.json` → Services, pricing, engagement, photos
-- `wiki/media/instagram/<name>/catalog.md` → Available photo assets by category
+**IMPORTANT:** Incorporate specific data from audit, funnel strategy, okto-summary, and media catalog. Use actual numbers, not generic advice.
 
-If these files exist, READ them and incorporate their findings. Do NOT generate generic advice — use the actual analyzed data with real numbers.
+Send via `send_message` (respect Telegram 4096 char limit):
 
-Send via `send_message` in multiple messages (Telegram 4096 char limit):
+**Message 1 — Client Overview:** Header (name, niche, geography). Key metrics (IG followers/ER, YouTube subs, website domain/platform, price range). Business summary (2-3 sentences). Target audience.
 
-**Message 1 — Client Overview:**
-```
-*BRIEFING: Встреча с <Name>*
-*<Niche> | <Geography>*
+**Message 2 — Web Presence & Search:** Platform presence list with status icons. Google and Yandex results (site position, Knowledge Panel, SERP landscape). SEO opportunity note.
 
-📊 *Ключевые цифры:*
-• Instagram: <followers> подписчиков, ER: <rate>%
-• YouTube: <subs> подписчиков, <videoCount> видео
-• Сайт: <domain> (<platform>)
-• Цена услуг: <price range>
+**Message 3 — Strengths & Weaknesses:** Strengths with specific numbers (3 items). Weaknesses paired with our solutions (3 items). Lost revenue estimate with specific problem.
 
-💼 *Бизнес:*
-<2-3 sentence summary of what they do, for whom, how>
+**Message 4 — Talking Points:** Opener (cite impressive metric). Key argument (pain to solution with numbers). Demo pitch. Close (timeline, price, ROI). Objection handlers for "too expensive" (show ROI), "I can do it myself" (show time cost), "need to think" (show competitor urgency).
 
-🎯 *Целевая аудитория:*
-<demographics, pain points, buying behavior>
-```
+**Message 5 — Recommended Funnels:** Quick Win (1 day launch), Main funnel (1 week), Scale funnel (1-2 months). Each with name, service, price, potential revenue. Total monthly potential.
 
-**Message 2 — Web Presence & Search:**
-```
-*🔍 ПРИСУТСТВИЕ В ИНТЕРНЕТЕ*
-
-*Платформы:*
-✅ Instagram: @username (проанализирован)
-✅ Сайт: domain.uz (проанализирован)
-⬜ YouTube: @channel (найден, не проанализирован)
-⬜ Telegram: @channel (найден в био)
-❌ TikTok: не найден
-❌ LinkedIn: не найден
-❌ Facebook: не найден
-
-*Google (запрос "<имя> <ниша> <город>"):*
-• Позиция сайта: #<N> / не найден
-• Knowledge Panel: есть/нет
-• Что на первой странице: <описание>
-• Конкуренты в выдаче: <кто занимает топ>
-
-*Yandex (тот же запрос):*
-• Позиция: #<N> / не найден
-• Карточка организации: есть/нет
-• Яндекс.Карты: есть/нет
-
-⚠️ *SEO-возможность:*
-"По запросу '<ключевой запрос>' вас не находят — 
-первые позиции занимают <конкуренты>. Воронка + контент исправят это."
-```
-
-**Message 3 — Strengths & Weaknesses:**
-```
-*АНАЛИЗ ВОЗМОЖНОСТЕЙ*
-
-✅ *Сильные стороны (отметить на встрече):*
-• <strength 1 with specific number>
-• <strength 2>
-• <strength 3>
-
-⚠️ *Слабые места (наша возможность):*
-• <weakness 1> → *Решение:* <what we offer>
-• <weakness 2> → *Решение:* <what we offer>
-• <weakness 3> → *Решение:* <what we offer>
-
-💡 *Упущенный доход:*
-"Вы теряете примерно $<X>/мес потому что <specific problem with numbers>"
-```
-
-**Message 4 — Talking Points:**
-```
-*КОЗЫРИ ДЛЯ ВСТРЕЧИ*
-
-🎯 *Opener (установить экспертизу):*
-"Я изучил(а) ваш профиль — у вас <specific impressive metric>. Это в <N>x выше среднего по нише. Значит аудитория горячая и готова покупать."
-
-💰 *Ключевой аргумент (боль → решение):*
-"Сейчас вы принимаете заявки через Директ — это <N> потерянных клиентов в месяц. Автоворонка может конвертировать <X>% из них автоматически."
-
-📱 *Демонстрация:*
-"Вот воронка которую я уже подготовил(а) для вашего бизнеса — [показать демо]. Она использует ваши реальные фото, цены и отзывы."
-
-🤝 *Закрытие:*
-"Запуск первой воронки — <N> дней. Вложения: <price>. Окупаемость при <N> клиентах."
-
-❌ *Если возражение "дорого":*
-"Одна воронка приносит <X> клиентов/мес × <price> = <revenue>. ROI через <N> месяцев."
-
-❌ *Если возражение "я сам(а) могу":*
-"Конечно. Но <N> часов вашего времени × ваш часовой rate = $<X>. Мы делаем это за <price> и <time>."
-
-❌ *Если "надо подумать":*
-"Понимаю. Пока думаете — конкуренты запускают свои воронки. Вот что изменится через 30 дней если начнём сейчас: <specific projection>"
-```
-
-**Message 5 — Recommended Funnels:**
-```
-*РЕКОМЕНДУЕМЫЕ ВОРОНКИ*
-
-🔥 *Quick Win (запуск за 1 день):*
-<funnel name> — <service> за <price>
-Потенциал: <X> клиентов/мес = $<revenue>/мес
-
-📈 *Основная воронка (запуск за 1 неделю):*
-<funnel name> — <service>
-Структура: Лендинг → <steps> → Оплата
-Потенциал: $<revenue>/мес
-
-🚀 *Масштабная (через 1-2 месяца):*
-<funnel name> — курс/программа
-Потенциал: $<revenue>/мес
-
-💰 *Суммарный потенциал: $<total>/мес*
-```
-
-**Message 6 — Available Assets:**
-```
-*ГОТОВЫЕ АССЕТЫ*
-
-📸 Фото для баннеров: <N> шт (banner-worthy)
-🎥 Видео для уроков: <N> шт (транскрипты готовы)
-⭐ Отзывы: <N> шт
-💰 Цены: уже известны
-📝 Тексты: <N> постов адаптируемы для лендингов
-
-Всё это уже собрано и готово к использованию в воронке.
-```
+**Message 6 — Available Assets:** Photo count (banner-worthy), video count, reviews, prices, adaptable post texts. Note everything is ready for funnel use.
 
 ### Phase 4: Create Demo Funnel
 
-Always propose creating a demo funnel as part of prep. Send message:
-"Хочешь создать демо-воронку для показа на встрече? У меня есть все данные: фото, цены, услуги."
-
-If user agrees (or by default if funnel-strategy exists):
-
-1. Read client-profile.json → pick Quick Win funnel
-2. Select best author photo (banner-worthy from catalog)
-3. Use real services/prices from profile
-4. If OctoFunnel CRM access available:
-   - Open via agent-browser with saved auth
-   - Create new funnel through Okto AI chat
-   - Provide brief: client name, service, price, target audience
-   - Include client's photo as banner
-   - Save funnel URL
-5. If no CRM access: create funnel brief document with all content ready for manual creation
+Propose creating a demo funnel. If user agrees (or funnel-strategy exists):
+1. Read client-profile.json, pick Quick Win funnel
+2. Select best author photo from catalog
+3. Use real services/prices
+4. If OctoFunnel CRM access: create via agent-browser + Okto AI chat (brief: name, service, price, audience, photo)
+5. If no CRM: create funnel brief document with all content ready
 6. Send demo link/brief to user
 
 ### Phase 5: Save to Wiki
 
-Save briefing for future reference and repeat meetings:
-
-`wiki/entities/client-<name>-prep.md`
-```yaml
----
-title: "Client Prep — <Name>"
-type: entity
-subtype: client-prep
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-related: ["[[entities/client-<name>]]"]
-tags: [client-prep, meeting, sales]
-confidence: high
----
-```
-
-Update index + log: `## [YYYY-MM-DD] ingest | Client prep: <Name>`
-Git commit.
+Save to `wiki/entities/client-<name>-prep.md` with YAML frontmatter (title, type: entity, subtype: client-prep, dates, related, tags). Update index + log. Git commit.
 
 ## Re-prep (repeat meetings)
 
-If prep already exists → read previous, note what changed since last meeting:
-"С прошлой встречи: +50 подписчиков, 3 новых поста, цена мастер-класса изменилась..."
+If prep exists, read previous and note changes since last meeting (follower growth, new posts, price changes).
 
 ## Cost
 
-Zero API cost — reads existing data. Demo funnel creation may use OctoFunnel platform (free for account owner).
+Zero API cost — reads existing data. Demo funnel may use OctoFunnel (free for account owner).

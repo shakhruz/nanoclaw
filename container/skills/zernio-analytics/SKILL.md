@@ -10,7 +10,6 @@ Pull comprehensive analytics from all connected social media platforms via the Z
 ## Prerequisites
 
 - `$ZERNIO_API_KEY` — env var (container-runner injects it)
-- Check: `echo $ZERNIO_API_KEY | head -c 10`
 
 ## API Base
 
@@ -54,59 +53,35 @@ Send progress: "Подключено N платформ: <list>"
 
 ### Phase 2: Pull Analytics
 
-**2a. Post-level analytics (all platforms):**
+**API pattern** — all endpoints use the same base and auth header. Save each response to `$WD/<name>.json`:
+
 ```bash
-curl -s "https://zernio.com/api/v1/analytics?limit=100" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/analytics-posts.json
+# Template:
+curl -s "https://zernio.com/api/v1/analytics/<ENDPOINT>?<PARAMS>" \
+  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/<name>.json
 ```
 
-**2b. Daily metrics (last 30 days):**
+**Endpoints to pull:**
+
+| Endpoint | Params | Output file |
+|----------|--------|-------------|
+| `analytics?limit=100` | — | `analytics-posts.json` |
+| `analytics/daily-metrics` | `startDate=$START&endDate=$END` | `daily-metrics.json` |
+| `analytics/best-time-to-post` | — | `best-time.json` |
+| `analytics/posting-frequency` | — | `frequency.json` |
+| `analytics/follower-stats` | `accountId=<ID>` (per account) | `follower-stats.json` |
+| `analytics/instagram-demographics` | `accountId=<IG_ID>` | `ig-demographics.json` |
+| `analytics/instagram-account-insights` | `accountId=<IG_ID>&period=last_30_days` | `ig-insights.json` |
+| `analytics/youtube-daily-views` | `accountId=<YT_ID>&startDate=$START&endDate=$END` | `yt-views.json` |
+| `analytics/youtube-demographics` | `accountId=<YT_ID>` | `yt-demographics.json` |
+
+Date range setup:
 ```bash
 START=$(date -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -v-30d +%Y-%m-%d)
 END=$(date +%Y-%m-%d)
-curl -s "https://zernio.com/api/v1/analytics/daily-metrics?startDate=$START&endDate=$END" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/daily-metrics.json
 ```
 
-**2c. Best time to post:**
-```bash
-curl -s "https://zernio.com/api/v1/analytics/best-time-to-post" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/best-time.json
-```
-
-**2d. Posting frequency vs engagement:**
-```bash
-curl -s "https://zernio.com/api/v1/analytics/posting-frequency" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/frequency.json
-```
-
-**2e. Follower stats (per account):**
-For each account ID from Phase 1:
-```bash
-curl -s "https://zernio.com/api/v1/analytics/follower-stats?accountId=<ID>" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" >> $WD/follower-stats.json
-```
-
-**2f. Platform-specific (if available on plan):**
-```bash
-# Instagram demographics (age, city, country, gender)
-curl -s "https://zernio.com/api/v1/analytics/instagram-demographics?accountId=<IG_ID>" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/ig-demographics.json
-
-# Instagram account insights (reach, views, interactions)
-curl -s "https://zernio.com/api/v1/analytics/instagram-account-insights?accountId=<IG_ID>&period=last_30_days" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/ig-insights.json
-
-# YouTube daily views and watch time
-curl -s "https://zernio.com/api/v1/analytics/youtube-daily-views?accountId=<YT_ID>&startDate=$START&endDate=$END" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/yt-views.json
-
-# YouTube demographics
-curl -s "https://zernio.com/api/v1/analytics/youtube-demographics?accountId=<YT_ID>" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY" > $WD/yt-demographics.json
-```
-
-Note: some endpoints may require paid Zernio plans. If response is HTML instead of JSON, skip that endpoint.
+Note: platform-specific endpoints (instagram-*, youtube-*) may require paid Zernio plans. If response is HTML instead of JSON, skip that endpoint.
 
 ### Phase 3: Analyze & Aggregate
 
@@ -134,56 +109,11 @@ console.log(JSON.stringify(result,null,2));
 
 ### Phase 4: Generate Report
 
-Send via `send_message`:
-
-```
-*📊 АНАЛИТИКА СОЦИАЛЬНЫХ СЕТЕЙ*
-*Период: последние 30 дней*
-
-*Общие метрики:*
-• Постов: <N>
-• Просмотров: <N>
-• Лайков: <N>
-• Комментариев: <N>
-• Средний engagement: <N>
-
-*По платформам:*
-| Платформа | Постов | Просмотров | Лайков | Top пост |
-|-----------|--------|------------|--------|----------|
-| YouTube | <N> | <N> | <N> | <title> |
-| Instagram | <N> | <N> | <N> | <title> |
-| ... | | | | |
-
-*Лучшее время для публикации:*
-<from best-time.json>
-
-*Рост подписчиков:*
-<from follower-stats>
-
-*Демография (если доступно):*
-<from ig-demographics / yt-demographics>
-
-*Рекомендации:*
-• <based on data — what to post more, when, on which platform>
-```
+Send via `send_message` — include: period (last 30 days), total metrics (posts/views/likes/comments/engagement), per-platform table (platform | posts | views | likes | top post), best time to post, follower growth, demographics (if available), and 2-3 data-driven recommendations.
 
 ### Phase 5: Save to Wiki
 
-Create/update `wiki/entities/social-media-analytics.md`:
-```yaml
----
-title: "Social Media Analytics — <owner name>"
-type: entity
-subtype: social-analytics
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-related: ["[[people/shakhruz-ashot]]"]
-tags: [analytics, social-media, zernio]
-confidence: high
----
-```
-
-Sections: Connected Platforms, Overall Metrics, Per-Platform Breakdown, Top Performing Content, Best Time to Post, Audience Demographics, Follower Growth, Recommendations.
+Create/update `wiki/entities/social-media-analytics.md` with frontmatter (`type: entity`, `subtype: social-analytics`, tags, related links). Sections: Connected Platforms, Overall Metrics, Per-Platform Breakdown, Top Content, Best Time, Demographics, Follower Growth, Recommendations.
 
 Update wiki index + log + git commit.
 
@@ -196,17 +126,9 @@ If analyzing for a specific client (not yourself):
 
 ## For Client Analysis
 
-When analyzing a client's socials (not your own accounts):
-1. Client must connect their accounts to Zernio first
-2. Or: use Zernio only for YOUR accounts, use Apify for client's public data
-3. Best: use both — Apify for content scraping, Zernio for analytics/demographics
+When analyzing a client's socials (not your own): client must connect to Zernio first, OR use Zernio for YOUR accounts + Apify for client's public data. Best: use both — Apify for content scraping, Zernio for analytics/demographics.
 
 ## Error Handling
 
-- **HTML response instead of JSON:** Endpoint requires higher Zernio plan. Skip, note as unavailable.
-- **Empty analytics:** Account recently connected, data not synced yet. Wait or use Apify data.
-- **Account not found:** Verify account ID from Phase 1.
-
-## Cost
-
-Zero external API cost — Zernio analytics included in subscription.
+- **HTML response instead of JSON:** endpoint requires higher Zernio plan — skip and note as unavailable.
+- **Empty analytics or account not found:** verify account ID from Phase 1; account may not be synced yet.

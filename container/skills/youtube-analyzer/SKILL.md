@@ -5,36 +5,29 @@ description: Deep YouTube channel and video analysis for business/expert positio
 
 # YouTube Channel & Video Analyzer
 
-Analyze YouTube channels and individual videos to understand the business/expert's content, audience, and expertise. Results feed into client profiles and Okto funnel strategy.
+Analyze YouTube channels and videos to understand business/expert content, audience, and expertise. Results feed into client profiles and Okto funnel strategy.
 
 ## Prerequisites
 
-- `$APIFY_TOKEN` — Apify API key (container env var)
-- `$OPENROUTER_API_KEY` — OpenRouter API key (container env var)
+- `$APIFY_TOKEN`, `$OPENROUTER_API_KEY` — container env vars
 - Deepgram key in `/workspace/group/config.json` (for videos without subtitles)
 
 ## Trigger
 
-When user asks to analyze a YouTube channel or video. Accept:
-- Channel: `https://youtube.com/@username`, `https://youtube.com/c/ChannelName`, `@username`
-- Video: `https://youtube.com/watch?v=XXXXX`, `https://youtu.be/XXXXX`
-- Playlist: `https://youtube.com/playlist?list=XXXXX`
-- "проанализируй ютуб канал", "analyze YouTube"
+When user asks to analyze a YouTube channel or video. Accept: channel URLs (`@username`, `/c/Name`), video URLs (`watch?v=`, `youtu.be/`), playlist URLs, "проанализируй ютуб канал", "analyze YouTube".
 
 ## Apify Actors
 
-| Purpose | Actor ID | Use |
-|---------|----------|-----|
-| Channel info + video list | `streamers~youtube-scraper` | Main scraper: channel data + all videos |
-| Channel metadata | `streamers~youtube-channel-scraper` | Fast channel info (subs, description) |
-| Transcripts | `pintostudio~youtube-transcript-scraper` | YouTube auto-captions extraction |
-| Comments | `streamers~youtube-comments-scraper` | Video comments |
+| Purpose | Actor ID |
+|---------|----------|
+| Channel info + videos | `streamers~youtube-scraper` |
+| Channel metadata | `streamers~youtube-channel-scraper` |
+| Transcripts | `pintostudio~youtube-transcript-scraper` |
+| Comments | `streamers~youtube-comments-scraper` |
 
-**Apify sync endpoint** (same as Instagram):
+**Apify sync endpoint:**
 ```bash
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/<ACTOR_ID>/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=300" \
-  -H "Content-Type: application/json" -d '<INPUT_JSON>'
+curl -s -X POST "https://api.apify.com/v2/acts/<ACTOR_ID>/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=<T>" -H "Content-Type: application/json" -d '<INPUT>'
 ```
 
 ## Workflow
@@ -42,283 +35,93 @@ curl -s -X POST \
 ### Phase 0: Setup
 
 ```bash
-# Extract channel handle or video ID from input
 export WD=/workspace/group/youtube-analysis/<channel-or-id>
 mkdir -p $WD/{videos,thumbnails,transcripts,screenshots}
 ```
 
-Detect input type:
-- Channel URL → full channel analysis (all phases)
-- Individual video URL(s) → skip to Phase 3 (direct video analysis)
-- Playlist URL → extract video list, then Phase 3
-
-Send progress: "Начинаю анализ YouTube канала..."
+Detect input type: Channel URL → full analysis | Video URL(s) → skip to Phase 3 | Playlist → extract list, then Phase 3.
 
 ### Phase 1: Channel Profile
 
-```bash
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/streamers~youtube-channel-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=120" \
-  -H "Content-Type: application/json" \
-  -d '{"channelUrls":["https://www.youtube.com/@<HANDLE>"]}' > $WD/raw-channel.json
-```
+Apify `streamers~youtube-channel-scraper` with `{"channelUrls":["https://www.youtube.com/@<HANDLE>"]}` → `$WD/raw-channel.json`.
 
-Extract: channelName, subscriberCount, videoCount, description, thumbnailUrl, bannerUrl, country, joinedDate, links.
+Extract: channelName, subscriberCount, videoCount, description, thumbnailUrl, bannerUrl, country, joinedDate, links. Download avatar.
 
-Download channel avatar:
-```bash
-AVATAR_URL=$(node -e "const d=JSON.parse(require('fs').readFileSync('$WD/raw-channel.json','utf8'));console.log(d[0]?.thumbnailUrl||'')")
-curl -sL -o $WD/channel-avatar.jpg "$AVATAR_URL"
-```
+**Face detection** via OpenRouter (same as Instagram) → `$WD/face-reference.json`.
 
-**Face detection** via OpenRouter (same as Instagram):
-Analyze avatar → save to `$WD/face-reference.json`.
-
-**Browser screenshots** (take multiple views of the channel):
+**Browser screenshots:**
 ```bash
 for f in /workspace/group/*-auth.json; do [ -f "$f" ] && agent-browser state load "$f"; done
 agent-browser open "https://www.youtube.com/@<HANDLE>"
 agent-browser wait --timeout 5000
 agent-browser screenshot --full $WD/screenshots/channel-full.png
-agent-browser click "Videos"
-agent-browser wait --timeout 3000
-agent-browser screenshot $WD/screenshots/channel-videos.png
 ```
-If "Playlists" tab exists:
-```bash
-agent-browser click "Playlists"
-agent-browser wait --timeout 3000
-agent-browser screenshot $WD/screenshots/channel-playlists.png
-```
+Also capture Videos tab and Playlists tab (if exists).
 
 Send progress: "Канал: <name>, <subs> подписчиков. Сканирую видео..."
 
 ### Phase 2: Broad Video Scan + Smart Selection
 
-```bash
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/streamers~youtube-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=300" \
-  -H "Content-Type: application/json" \
-  -d '{"startUrls":[{"url":"https://www.youtube.com/@<HANDLE>"}],"maxResults":200}' > $WD/raw-videos.json
-```
+Apify `streamers~youtube-scraper` with `{"startUrls":[{"url":"https://www.youtube.com/@<HANDLE>"}],"maxResults":200}` → `$WD/raw-videos.json`.
 
-**Pre-filter with Node:**
-```bash
-node -e "
-const vids=JSON.parse(require('fs').readFileSync('$WD/raw-videos.json','utf8'));
-const kw=/цен|прайс|стоимост|услуг|курс|урок|мастер.класс|отзыв|результат|продукт|обучени|вебинар|narx|xizmat|kurs|dars|price|service|course|lesson|masterclass|review|tutorial|webinar/i;
-const s=vids.filter(v=>v.title).map((v,i)=>({
-  idx:i, title:(v.title||'').slice(0,200), description:(v.description||'').slice(0,300),
-  views:v.viewCount||0, likes:v.likes||0, date:v.date||v.uploadDate||'',
-  duration:v.duration||'', url:v.url||'', thumbnailUrl:v.thumbnailUrl||'',
-  hasKw:kw.test((v.title||'')+(v.description||'')),
-  score:(kw.test((v.title||'')+(v.description||''))?50:0)+(v.viewCount||0)*0.0001+(v.likes||0)*0.01
-}));
-s.sort((a,b)=>b.score-a.score);
-require('fs').writeFileSync('$WD/scored-videos.json',JSON.stringify(s.slice(0,50),null,2));
-console.log('Total videos:',vids.length,'| Pre-filtered:',s.length);
-"
-```
+Pre-filter with Node — score by business keywords (`цен|прайс|услуг|курс|урок|мастер.класс|отзыв|результат|narx|xizmat|kurs|price|service|course|review|tutorial|webinar` etc.) + views/likes. Save top 50 to `$WD/scored-videos.json`.
 
-**Smart selection:** Read `$WD/scored-videos.json`. Select 20-30 for analysis:
-1. **Courses/lessons** — мастер-классы, уроки, обучающий контент
-2. **Product/service demos** — обзоры, показ работы
-3. **Client testimonials** — отзывы, кейсы
-4. **Expert content** — где автор делится экспертизой
-5. **High engagement** — аномально много просмотров/лайков
-6. **Recent** — свежий контент показывает текущее направление
+**Smart-select 20-30 videos:** courses/lessons, product/service demos, client testimonials, expert content, high engagement, recent. Skip: empty shorts, music videos, non-business vlogs.
 
-Skip: shorts без содержания, музыкальные видео, vlogs без бизнес-контента.
-
-**Download thumbnails** of selected videos:
-```bash
-curl -sL -o $WD/thumbnails/video-<N>.jpg "<thumbnailUrl>"
-```
-
-Send progress: "Отобрано N видео для анализа. Извлекаю транскрипты..."
+Download thumbnails: `curl -sL -o $WD/thumbnails/video-<N>.jpg "<thumbnailUrl>"`
 
 ### Phase 3: Transcript Extraction
 
-**Step 1 — Batch transcript extraction via Apify:**
-```bash
-# Extract transcripts for all selected videos at once
-node -e "
-const scored=JSON.parse(require('fs').readFileSync('$WD/scored-videos.json','utf8'));
-const urls=scored.slice(0,30).map(v=>v.url).filter(Boolean);
-console.log(JSON.stringify({urls:urls}));
-" > /tmp/transcript-input.json
+**Batch extraction** via Apify `pintostudio~youtube-transcript-scraper` for all selected video URLs → `$WD/raw-transcripts.json`.
 
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/pintostudio~youtube-transcript-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=300" \
-  -H "Content-Type: application/json" \
-  -d @/tmp/transcript-input.json > $WD/raw-transcripts.json
-```
+Videos without YouTube auto-captions: skip, note count in summary.
 
-**Step 2 — Videos without transcripts:** Skip. Only analyze videos that have YouTube auto-captions. Note count of skipped videos in summary.
-
-**Step 3 — Compile all transcripts:**
-Save consolidated `$WD/all-transcripts.json`:
-```json
-[{"videoId":"","title":"","transcript":"","source":"youtube|deepgram","language":""}]
-```
-
-Send progress: "Транскрипты получены для N видео. Анализирую контент..."
+Save consolidated `$WD/all-transcripts.json`: `[{"videoId":"","title":"","transcript":"","source":"youtube|deepgram","language":""}]`
 
 ### Phase 4: Deep Video Analysis (top 5-8)
 
-For the most important videos:
-
-**4a. Visual analysis via OpenRouter** (video URL or thumbnail):
+**Visual analysis via OpenRouter:**
 ```
-Prompt: "Analyze this YouTube video. Describe:
-1) Who is presenting — appearance, style
-2) Production quality (studio/home/outdoor, lighting, graphics)
-3) Visual branding (colors, lower thirds, intro/outro)
-4) Content format (talking head, screencast, presentation, interview)
-5) Key visual elements (products shown, demonstrations, slides)"
+Prompt: "Analyze this YouTube video. Describe: 1) Presenter appearance/style 2) Production quality 3) Visual branding 4) Content format 5) Key visual elements"
 ```
 
-**4b. Content analysis from transcript:**
-For each transcribed video, analyze:
-- Main topic and key points
-- Services/products mentioned
-- Prices/offers mentioned
-- Calls to action
-- Teaching style and expertise level
-- Language and tone
+**Content analysis from transcript:** Main topic, key points, services/products mentioned, pricing, CTAs, teaching style, language/tone.
 
-### Phase 5: Comments (top 5 videos by engagement)
+### Phase 5: Comments (top 5 videos)
 
-```bash
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/streamers~youtube-comments-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=120" \
-  -H "Content-Type: application/json" \
-  -d '{"videoUrls":["https://www.youtube.com/watch?v=<ID>"],"maxComments":50}' >> $WD/raw-comments.json
-```
-
-Extract: FAQ patterns, audience pain points, testimonials, objections.
+Apify `streamers~youtube-comments-scraper` with `{"videoUrls":["<URL>"],"maxComments":50}`. Extract: FAQ patterns, pain points, testimonials, objections.
 
 ### Phase 6: Individual Videos (by URL, including unlisted)
 
-When user provides specific video URLs (e.g. unlisted master classes):
-
-```bash
-# Apify handles individual URLs directly
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/streamers~youtube-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=120" \
-  -H "Content-Type: application/json" \
-  -d '{"startUrls":[{"url":"<VIDEO_URL>"}]}' > $WD/video-<id>.json
-
-# Get transcript
-curl -s -X POST \
-  "https://api.apify.com/v2/acts/pintostudio~youtube-transcript-scraper/run-sync-get-dataset-items?token=$APIFY_TOKEN&timeout=120" \
-  -H "Content-Type: application/json" \
-  -d '{"urls":["<VIDEO_URL>"]}' >> $WD/raw-transcripts.json
-```
-
-These videos often contain the most valuable content (paid courses, private lessons) — prioritize their analysis.
+When user provides specific URLs: scrape via `streamers~youtube-scraper` + get transcript. These often contain the most valuable content (paid courses, private lessons) — prioritize.
 
 ### Phase 7: Wiki + Media Catalog Ingest
 
-**7a. Copy media to wiki:**
-```bash
-MEDIA_DIR=/workspace/group/wiki/media/youtube/<channel>
-mkdir -p $MEDIA_DIR/{thumbnails,screenshots}
-cp $WD/thumbnails/* $MEDIA_DIR/thumbnails/ 2>/dev/null
-cp $WD/channel-avatar.jpg $MEDIA_DIR/ 2>/dev/null
-cp $WD/screenshots/* $MEDIA_DIR/screenshots/ 2>/dev/null
-```
+**7a.** Copy media to `wiki/media/youtube/<channel>/{thumbnails,screenshots}`.
 
-**7b. Create media catalog** at `wiki/media/youtube/<channel>/catalog.md`
+**7b.** Create `catalog.md`.
 
-**7c. Create wiki entity page** at `wiki/entities/<channel>.md`:
-```yaml
----
-title: "YouTube — @<channel>"
-type: entity
-subtype: youtube-channel
-created: YYYY-MM-DD
-related: ["[[entities/<instagram-username>]]"]
-tags: [youtube, video, content-analysis]
-confidence: high
----
-```
+**7c.** Create wiki entity at `wiki/entities/<channel>.md` with frontmatter (`type: entity`, `subtype: youtube-channel`, related, tags). Sections: Overview, Channel Metrics, Content Strategy, Top Videos, Audience, Teaching Style, Services & Products, Video Assets.
 
-Sections: Overview, Channel Metrics, Content Strategy (topics, formats, frequency), Top Videos (with transcripts), Audience (from comments), Teaching Style, Services & Products Mentioned, Video Assets for Funnels.
+**7d. Ingest transcripts as wiki sources (CRITICAL):** For top 10-15 videos, create `wiki/sources/YYYY-MM-DD-yt-<slug>.md` with frontmatter, key points, services mentioned, notable quotes, and full transcript. This makes 150K+ chars searchable through wiki queries.
 
-**7d. Ingest transcripts as wiki sources (CRITICAL):**
-
-For each video with a non-empty transcript (top 10-15 by relevance), create a wiki source page:
-
-```bash
-# For each important video transcript:
-cat > /workspace/group/wiki/sources/YYYY-MM-DD-yt-<title-slug>.md << 'EOF'
----
-title: "YT: <video title>"
-type: source-summary
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-sources: ["../../youtube-analysis/<channel>/all-transcripts.json"]
-related: ["[[entities/<channel>-youtube]]"]
-tags: [youtube, transcript, <topic-tags>]
-confidence: high
----
-
-# <Video Title>
-
-**URL:** <video url>
-**Views:** <N> | **Duration:** <N> min
-**Topic:** <main topic>
-
-## Key Points
-- <bullet 1>
-- <bullet 2>
-- <bullet 3>
-
-## Services/Products Mentioned
-<extracted from transcript>
-
-## Quotes Worth Using in Funnel
-> "<notable quote 1>"
-> "<notable quote 2>"
-
-## Full Transcript
-<paste full transcript text>
-EOF
-```
-
-This is the most valuable step — it makes 150K+ chars of video content searchable through wiki queries. Without it, the transcripts sit unused in a JSON file.
-
-**7e. .gitignore for media, update index + log + git commit.**
+**7e.** Add `.gitignore` for media, update index, git commit.
 
 ### Phase 8: Summary + okto-summary merge
 
 Save `$WD/channel-summary.json`:
 ```json
 {
-  "channelName":"", "handle":"", "subscribers":0, "videoCount":0,
-  "description":"", "country":"", "links":[],
+  "channelName":"","handle":"","subscribers":0,"videoCount":0,"description":"","country":"","links":[],
   "topVideos":[{"title":"","views":0,"transcript":"...","url":""}],
-  "contentTopics":[], "teachingStyle":"", "tone":"", "language":"",
-  "services":[], "pricing":[], "audienceFAQ":[],
-  "thumbnailStyle":"", "productionQuality":"",
+  "contentTopics":[],"teachingStyle":"","tone":"","language":"",
+  "services":[],"pricing":[],"audienceFAQ":[],
+  "thumbnailStyle":"","productionQuality":"",
   "funnelAssets":{"videoLessons":[],"testimonials":[],"demos":[]},
   "analyzedAt":""
 }
 ```
 
-If Instagram analysis exists for the same person → merge into existing `okto-summary.json`:
-- Add `youtube` section
-- Cross-reference video content with Instagram services
+If Instagram analysis exists for same person → merge into existing `okto-summary.json` with `youtube` section and cross-references.
 
 Send final summary + key thumbnails via `send_file`.
-
-## Error Handling
-- **Apify timeout:** reduce maxResults, retry
-- **No transcripts available:** fall back to Deepgram (download audio first)
-- **Deepgram unavailable:** analyze title + description + comments only
-- **Private video without URL:** ask user for link
-- **Channel not found:** report to user
-
-## Cost
-~$0.30-0.80 per channel: Apify ~$0.20-0.50, Deepgram ~$0.05-0.20, OpenRouter ~$0.05-0.15.
