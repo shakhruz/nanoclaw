@@ -150,7 +150,32 @@ confidence: high
 - Readiness score: high/medium/low
 - Estimated time to first funnel: X days
 
-### Phase 4: Generate client-profile.json
+### Phase 4: Save Reference Photo
+
+Find the best author photo and save as reference for avatars and funnels:
+
+```bash
+CLIENT="<name>"
+mkdir -p /workspace/group/client-profiles/$CLIENT
+
+# Priority: categories/author → scored posts with hasOwnerFace → profile avatar
+AUTHOR_DIR="/workspace/group/wiki/media/instagram/<username>/categories/author"
+if [ -d "$AUTHOR_DIR" ] && ls "$AUTHOR_DIR"/*.jpg 2>/dev/null | head -1; then
+  cp "$(ls -t $AUTHOR_DIR/*.jpg | head -1)" /workspace/group/client-profiles/$CLIENT/reference-photo.jpg
+elif [ -f "/workspace/group/instagram-analysis/<username>/images/post-1.jpg" ]; then
+  # Fallback: use first scored post with owner face
+  cp /workspace/group/instagram-analysis/<username>/images/post-1.jpg /workspace/group/client-profiles/$CLIENT/reference-photo.jpg
+fi
+```
+
+Add to profile.json: `"referencePhoto": "client-profiles/<name>/reference-photo.jpg"`
+
+This photo is used by:
+- `design-avatar` — for generating profile pictures
+- `octofunnel-creator` — for OKTO reference photos
+- `design-youtube-thumbnail` — for thumbnails with author face
+
+### Phase 5: Generate client-profile.json
 
 Save machine-readable version:
 
@@ -177,7 +202,55 @@ cat > /workspace/group/client-profiles/<name>/profile.json << 'EOF'
 EOF
 ```
 
-### Phase 5: Save & Report
+### Phase 6: Generate Client Report (shareable gift)
+
+Create a polished report that can be shared with the client:
+
+```bash
+CLIENT="<name>"
+cat > /workspace/group/client-profiles/$CLIENT/report.md << 'REPORT'
+# Анализ онлайн-присутствия: <Client Name>
+
+Подготовлено: AshotAI | <date>
+
+---
+
+## Ваши сильные стороны
+- <top 3-5 strengths from audit>
+
+## Что можно улучшить
+- <top 3-5 actionable improvements>
+
+## Ваша аудитория
+- <demographics, interests, pain points>
+
+## Рекомендуемая стратегия
+
+Быстрый старт (первая неделя):
+- <quick win funnel recommendation>
+
+Среднесрочный план (1-3 месяца):
+- <growth strategy>
+
+## Визуальный бренд
+- Основные цвета: <hex codes>
+- Стиль: <description>
+- Рекомендации: <suggestions>
+
+## Рекомендуемые воронки продаж
+
+| Воронка | Тип | Ожидаемый результат |
+|---------|-----|---------------------|
+| <funnel 1> | <type> | <outcome> |
+
+---
+Анализ подготовлен с помощью AI-платформы AshotAI
+REPORT
+```
+
+Send report via send_file: "Отчёт для клиента <name> — можно отправить как подарок"
+
+### Phase 7: Save & Finalize
 
 - Update wiki index + log: `## [YYYY-MM-DD] ingest | Client profile: <Name>`
 - Cross-link all related entity pages
