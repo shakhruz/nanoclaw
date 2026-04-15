@@ -557,18 +557,29 @@ async function runQuery(
               NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
             },
           },
-          gmail: {
+        };
+        const composioKey = process.env.COMPOSIO_API_KEY;
+        if (composioKey) {
+          servers['composio'] = {
+            type: 'http',
+            url: 'https://backend.composio.dev/tool_router/trs_o-vfXQTHGBKS/mcp',
+            headers: { 'x-api-key': composioKey },
+          };
+          log('Composio MCP server configured (Gmail + Calendar)');
+        } else {
+          // Fallback to legacy Gmail/Calendar MCP servers
+          servers['gmail'] = {
             command: 'npx',
             args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
-          },
-          gcal: {
+          };
+          servers['gcal'] = {
             command: 'npx',
             args: ['-y', '@cocal/google-calendar-mcp'],
             env: {
               GOOGLE_OAUTH_CREDENTIALS:
                 '/home/node/.gmail-mcp/gcp-oauth.keys.json',
             },
-          },
+          };
         };
         const parallelKey = process.env.PARALLEL_API_KEY;
         if (parallelKey) {
@@ -592,6 +603,14 @@ async function runQuery(
             env: { TODOIST_API_TOKEN: todoistToken },
           };
           log('Todoist MCP server configured');
+        }
+        const telegramScannerPort = process.env.TELEGRAM_SCANNER_PORT;
+        if (telegramScannerPort) {
+          servers['telegram-scanner'] = {
+            type: 'http',
+            url: `http://host.containers.internal:${telegramScannerPort}/sse`,
+          };
+          log('Telegram Scanner MCP server configured');
         }
         return servers;
       })(),

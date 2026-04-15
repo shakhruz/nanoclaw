@@ -308,6 +308,8 @@ function buildContainerArgs(
     'APIFY_TOKEN',
     'OPENROUTER_API_KEY',
     'ZERNIO_API_KEY',
+    'COMPOSIO_API_KEY',
+    'TELEGRAM_SCANNER_PORT',
   ]);
   if (integrationSecrets.PARALLEL_API_KEY) {
     args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
@@ -329,6 +331,15 @@ function buildContainerArgs(
   }
   if (integrationSecrets.ZERNIO_API_KEY) {
     args.push('-e', `ZERNIO_API_KEY=${integrationSecrets.ZERNIO_API_KEY}`);
+  }
+  if (integrationSecrets.COMPOSIO_API_KEY) {
+    args.push('-e', `COMPOSIO_API_KEY=${integrationSecrets.COMPOSIO_API_KEY}`);
+  }
+  if (integrationSecrets.TELEGRAM_SCANNER_PORT) {
+    args.push(
+      '-e',
+      `TELEGRAM_SCANNER_PORT=${integrationSecrets.TELEGRAM_SCANNER_PORT}`,
+    );
   }
 
   // Runtime-specific args for host gateway resolution
