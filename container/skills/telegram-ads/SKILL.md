@@ -17,6 +17,32 @@ Generate complete ad packages: copy + image + video for Telegram Ads platform (a
 - Client data from wiki (recommended) or ad text from user
 - Funnel URL or bot username (what we're advertising)
 
+## Related Skills
+
+- **Before this skill:** Run `telegram-ads-research` to find channels, bots, and search phrases for targeting. The research produces a media plan with scored placements.
+- **After this skill:** Run `telegram-ads-manager` to create campaigns in ads.telegram.org and upload creatives.
+
+## Targeted Mode (from media plan)
+
+When a media plan exists (`wiki/entities/<client>-telegram-ads-mediaplan.md`), use **targeted mode** — generate creatives personalized to each placement:
+
+1. Read the media plan → get top placements with audience analysis
+2. For each placement, generate ad text that speaks to THAT audience
+3. Generate banners matching the channel's visual tone
+4. Result: N placement-specific creative packages instead of 1 generic
+
+Example: channel about business automation gets "Автоматизируй продажи с ИИ", while a marketing channel gets "Твои клиенты из Instagram уходят к конкурентам — поставь бота".
+
+## TON Payment Reference
+
+- **Platform:** ads.telegram.org (web-only, no API)
+- **Currency:** TON (Toncoin)
+- **Min deposit:** 20 TON (≈ $105)
+- **Min CPM bid:** 0.1 TON
+- **Revenue split:** 50% goes to channel owners
+- **Moderation:** 24-48 hours after submission
+- **No limit on ad count** — create many targeted ads for different placements
+
 ## Telegram Ads Specs
 
 ### Ad Placements
@@ -328,6 +354,22 @@ After launch:
 - Check after 48-72 hours: CTR, CPC, conversions
 - Kill underperformers, scale winners
 - Iterate: new variants based on winning patterns
+
+## Search Phrase Creatives
+
+When targeting search phrases, the ad text must directly answer the search intent:
+
+| User searches | Ad should | Example |
+|---------------|-----------|---------|
+| "как создать бота" | Offer a solution | "Создай бота за 30 минут с ИИ — без кода" |
+| "воронка продаж" | Show expertise | "Автоворонка с конверсией 12% — ИИ строит за тебя" |
+| "курсы маркетинга" | Differentiate | "Не курсы — готовый инструмент. ИИ делает маркетинг за вас" |
+
+Rules for search phrase ads:
+- First 50 chars must match the search intent
+- Use the exact phrase (or close variant) in the ad text
+- CTA should be the logical next step after the search
+- More specific = higher CTR (don't be generic)
 
 ## Cost
 
