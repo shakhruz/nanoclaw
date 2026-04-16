@@ -286,6 +286,11 @@ function buildContainerArgs(
     `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
   );
 
+  // Expose host gateway IP so container-side code can reach host services
+  // (e.g., telegram-scanner MCP on :3002) without relying on docker-specific
+  // hostnames like host.containers.internal that Apple Container doesn't provide.
+  args.push('-e', `NANOCLAW_HOST_GATEWAY=${CONTAINER_HOST_GATEWAY}`);
+
   // Mirror the host's auth method with a placeholder value.
   // API key mode: SDK sends x-api-key, proxy replaces with real key.
   // OAuth mode:   SDK exchanges placeholder token for temp API key,

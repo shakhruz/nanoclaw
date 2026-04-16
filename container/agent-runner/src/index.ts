@@ -606,11 +606,15 @@ async function runQuery(
         }
         const telegramScannerPort = process.env.TELEGRAM_SCANNER_PORT;
         if (telegramScannerPort) {
+          // Apple Container doesn't expose host.containers.internal; use the
+          // bridge gateway IP (passed from host via NANOCLAW_HOST_GATEWAY).
+          const scannerHost =
+            process.env.NANOCLAW_HOST_GATEWAY || 'host.containers.internal';
           servers['telegram-scanner'] = {
             type: 'http',
-            url: `http://host.containers.internal:${telegramScannerPort}/sse`,
+            url: `http://${scannerHost}:${telegramScannerPort}/sse`,
           };
-          log('Telegram Scanner MCP server configured');
+          log(`Telegram Scanner MCP server configured (host=${scannerHost})`);
         }
         return servers;
       })(),
