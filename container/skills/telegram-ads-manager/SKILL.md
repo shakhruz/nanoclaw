@@ -32,23 +32,43 @@ Create and manage ad campaigns in the Telegram Ads cabinet (ads.telegram.org) vi
 
 ### First time setup
 
+Use `--profile <path>` with a path on the mounted group volume. This creates a persistent browser profile directory that survives container restarts (cookies, localStorage, IndexedDB, service workers all preserved).
+
 ```bash
-agent-browser open "https://ads.telegram.org"
-agent-browser snapshot -i
-# Look for login button, click it
-# Enter phone number → Telegram sends code → enter code
-# Save session for reuse
-agent-browser save-state /workspace/group/telegram-ads-auth.json
+# Ensure profile directory exists (once)
+mkdir -p /workspace/group/browser-profiles/telegram-ads
+
+# Open with persistent profile
+agent-browser --profile /workspace/group/browser-profiles/telegram-ads open "https://ads.telegram.org"
+agent-browser --profile /workspace/group/browser-profiles/telegram-ads snapshot -i
+
+# First time: click login, enter phone, user sends code via Telegram, enter code
+# Subsequent runs: already logged in, profile has the session
 ```
+
+**Why `--profile` and NOT `--session-name` or `state save`:**
+- `--session-name` saves inside the container — lost on every restart
+- `state save/load` works but is a JSON file — doesn't capture everything (IndexedDB, service workers)
+- `--profile` is a full browser profile directory on the mounted volume — most reliable persistence
 
 ### Subsequent logins
 
+Just use the same `--profile` flag — session restored automatically:
+
 ```bash
-agent-browser load-state /workspace/group/telegram-ads-auth.json
-agent-browser open "https://ads.telegram.org"
-agent-browser snapshot -i
-# Verify we're logged in (dashboard visible)
-# If session expired → re-login
+agent-browser --profile /workspace/group/browser-profiles/telegram-ads open "https://ads.telegram.org"
+agent-browser --profile /workspace/group/browser-profiles/telegram-ads snapshot -i
+# Dashboard should appear immediately
+```
+
+If the page shows login (session expired on Telegram's side, usually after weeks), re-auth by following the first-time flow — the profile will be updated with fresh cookies.
+
+### Force re-login
+
+```bash
+rm -rf /workspace/group/browser-profiles/telegram-ads
+mkdir -p /workspace/group/browser-profiles/telegram-ads
+# Then run the login flow fresh
 ```
 
 ### Check balance
