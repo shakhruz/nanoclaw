@@ -218,9 +218,61 @@ Structure:
 
 **Quiet day skip:** If no stories scored above importance threshold (e.g. all scores < 30), OR the story list is empty — do NOT send a message. Log to `wiki/log.md` as `## [date] digest | skipped (quiet day, N posts scanned, no important stories)` and exit silently. Don't fabricate importance to fill space.
 
-Otherwise: send via `send_message` to Shakhruz in the main chat.
+Otherwise: send the **private** version via `send_message` to Shakhruz in the main chat.
 
 If digest is long (>4000 chars), split by major section breaks. Telegram limit per message is 4096.
+
+### Step 7b: Public publish (if enabled)
+
+If the task config sets `public_publish: true` and `public_channel: "@ashotonline"` (or similar), ALSO prepare a **public-facing version** and publish via `telegram-channel-publisher` skill.
+
+**Public version differs from private:**
+- **More personal tone** — "я вижу", "мне кажется", "важно для нас" (not neutral news-speak)
+- **Top 3-5 stories only** (not everything from private digest)
+- **Each story: 1-2 sentences + Ашот's take**
+- **No action items / no weekly trend section** (those are Shakhruz-personal)
+- **Hashtags at bottom:** `#AIновости #{date}`
+- **Preview image** generated via OpenRouter
+
+Template for public digest:
+
+```
+🌅 *AI сводка — {DD month}*
+
+<Краткое введение 1-2 предложения, что день принёс>
+
+*🚀 <Story 1 headline>*
+<1-2 sentences>
+💭 <Личное мнение Ашота>
+🔗 [подробнее]({url})
+
+*📊 <Story 2 headline>*
+...
+
+— — —
+Если вы хотите следить за AI без скроллинга 10 каналов — этот канал для вас. Ежедневная сводка, без воды.
+
+#AIновости #{YYYY_MM_DD}
+```
+
+**Generate preview image** (16:9, 1280x720) — dark background, topic visual cue, text "AI сводка — DD month". Save to `/workspace/group/content/{date}-ai-digest.jpg`.
+
+**Publish via telegram-channel-publisher:**
+```
+mcp__telegram-scanner__publish_to_channel(
+  channel="ashotonline",
+  text="<public digest text>",
+  image_path="/workspace/group/content/{date}-ai-digest.jpg"
+)
+```
+
+After publishing, notify Shakhruz in main chat:
+```
+📢 Опубликовала в @ashotonline: AI сводка за <date>
+🔗 <post_url>
+```
+
+Auto-publish without approval — Shakhruz moderates post-factum.
 
 ### Step 8: Wiki Ingest (top-5 stories)
 
