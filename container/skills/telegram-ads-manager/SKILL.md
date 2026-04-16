@@ -60,86 +60,108 @@ agent-browser snapshot -i
 # If balance < 5 TON → warn user: "Баланс X TON, рекомендуется пополнить"
 ```
 
-## Phase 2: Create Campaign
+## Cabinet Layout (as of April 2026)
+
+The ads.telegram.org interface has:
+- **Top bar**: "Telegram Ads" logo, Budget display (TON), Account selector dropdown, Avatar
+- **Dashboard**: Table of ads — columns: AD TITLE, VIEWS, CLICKS, ACTIONS, CTR, CVR, CPM, CPC, BUDGET, TARGET, STATUS, DATE ADDED
+- **Buttons**: "Manage budget", "Create a new ad"
+- **Ad detail**: Tabs — Info, Budget, Statistics
+- **Create ad page**: Fields on left, Preview on right, Targeting tabs (Search / Bots / Channels) on right
+
+**Multiple accounts**: User may have several ad accounts (dropdown in top-right). Select the correct one before creating ads.
+
+**Geo restrictions**: Ads will NOT be shown in Russia, Ukraine, Israel, Palestine.
+
+## Phase 2: Create Ad
 
 Load the media plan: `wiki/entities/<client>-telegram-ads-mediaplan.md`
 
-For each campaign (usually 1 per targeting type):
+Each ad = one targeting set. Create separate ads for channels, bots, and search phrases.
 
-### Step 1: New campaign
+### Step 1: Navigate to create
 
 ```bash
-# Navigate to campaign creation
-agent-browser click "Create Campaign"  # or equivalent button
+agent-browser click "Create a new ad"
 agent-browser snapshot -i
 ```
 
-### Step 2: Set targeting
-
-Based on media plan targeting type:
-
-**Channel targeting:**
-```bash
-# Find channel targeting input
-agent-browser fill "#channel-input" "@channel_username"
-# Add each channel from the media plan
-# Verify channels are accepted (1000+ subscribers)
-```
-
-**Bot targeting:**
-```bash
-# Find bot targeting input  
-agent-browser fill "#bot-input" "@bot_username"
-# Add each bot from the media plan
-```
-
-**Search phrase targeting:**
-```bash
-# Find keyword/search input
-agent-browser fill "#keyword-input" "ключевая фраза"
-# Add each phrase from the media plan
-```
-
-**Geo/language filters:**
-```bash
-# Set country: Uzbekistan (or as specified in media plan)
-# Set language: Russian / Uzbek
-```
-
-### Step 3: Create ad
+### Step 2: Fill ad details (left panel)
 
 ```bash
-# Enter ad text (≤ 160 chars)
-agent-browser fill "#ad-text" "<ad copy from media plan>"
+# Ad title (internal name, not shown to users)
+agent-browser fill "Ad title" "<client> — <targeting_type> — <date>"
 
-# Enter CTA button text (≤ 30 chars)  
-agent-browser fill "#cta-text" "<CTA text>"
+# Ad text (shown to users, ≤ 160 chars)
+agent-browser fill "Ad text" "<ad copy from media plan>"
 
-# Set destination link
-agent-browser fill "#destination" "https://t.me/<bot_or_channel>"
+# URL to promote (bot, channel, or post link)
+agent-browser fill "URL you want to promote" "https://t.me/<bot_or_channel>"
 
-# Upload media if supported
-agent-browser upload "#media-upload" "/workspace/group/telegram-ads/<client>/banner.jpg"
+# Upload photo or video (optional but recommended)
+# Click "Upload Photo or Video" button
+agent-browser click "Upload Photo or Video"
+agent-browser upload "<file-input>" "/workspace/group/telegram-ads/<client>/banner.jpg"
+
+# CPM in Ton (minimum 0.1, start with 1.00 for reasonable reach)
+agent-browser fill "CPM in Ton" "1.00"
+
+# Initial budget in Ton
+agent-browser fill "Initial budget in Ton" "5.00"
+
+# Daily views limit per user: select 1 (conservative) or 2
+agent-browser click "1"  # buttons: 1, 2, 3, 4
+
+# Initial status: On Hold (review first) or Active
+agent-browser click "On Hold"
 ```
 
-### Step 4: Set budget
+### Step 3: Set targeting (right panel tabs)
+
+Click the appropriate tab: **Search**, **Bots**, or **Channels**
+
+**Channel targeting (tab: Channels):**
+```bash
+agent-browser click "Channels"
+# Input field: "Target specific channels"
+agent-browser fill "Target specific channels" "@channel_username"
+# Press Enter to add, repeat for each channel
+# Verify: green checkmarks appear for accepted channels
+# Red = channel has < 1000 subscribers or is private
+```
+
+**Bot targeting (tab: Bots):**
+```bash
+agent-browser click "Bots"
+# Similar input field for bot usernames
+agent-browser fill "Target specific bots" "@bot_username"
+```
+
+**Search phrase targeting (tab: Search):**
+```bash
+agent-browser click "Search"
+# Input field: "Target search queries"
+agent-browser fill "Target search queries" "ключевая фраза"
+# Add multiple phrases, one at a time
+```
+
+### Step 4: Review preview
+
+The right panel shows a live preview of how the ad will look. Take a screenshot:
+```bash
+agent-browser snapshot
+# Save to /workspace/group/telegram-ads/<client>/preview-<targeting>-<date>.png
+```
+
+### Step 5: Submit
 
 ```bash
-# Daily budget or total budget
-agent-browser fill "#budget" "<amount in TON>"
-
-# CPM bid (start with minimum 0.1 TON, increase if needed)
-agent-browser fill "#cpm-bid" "0.1"
+# Scroll to bottom if needed
+agent-browser click "Create"  # or "Submit" button
+agent-browser snapshot  # Record confirmation
 ```
 
-### Step 5: Review & submit
-
-```bash
-agent-browser snapshot  # Full page screenshot for records
-# Review all settings match the media plan
-# Click submit/create
-agent-browser click "Submit"
-```
+Ad goes to "In Review" status (24-48 hours).
 
 Save screenshot to `/workspace/group/telegram-ads/<client>/campaign-<date>-screenshot.png`
 
