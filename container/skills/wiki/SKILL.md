@@ -181,9 +181,9 @@ When asked for photos/images: read `wiki/media-index.json` -> read catalog page 
 
 Wiki tracked in git inside `/workspace/group/wiki/`. After completing an operation:
 ```bash
-cd /workspace/group/wiki && git add -A && git commit -m "<op>: <short description>"
+cd /workspace/group && git add -A && git commit -m "<op>: <short description>" && git push origin master 2>/dev/null || true
 ```
-Commit on **operation completion** only, not after every file edit.
+Commit on **operation completion** only, not after every file edit. The `git push` backs up to GitHub automatically — if it fails (no network, etc.), it's non-blocking.
 
 ## Out of Scope
 
