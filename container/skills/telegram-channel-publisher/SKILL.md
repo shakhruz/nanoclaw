@@ -87,6 +87,17 @@ Supported: `*bold*`, `_italic_`, `` `code` ``, ` ```блок``` `, `[text](url)`
 
 Take input (digest, case study, reality note, etc.) and shape it per target surface structure.
 
+### 1b. Run through humanizer-ru (MANDATORY for Russian content)
+
+Before publishing any Russian-language post to @ashotonline, reality chat, or partners chat — pass the draft through the `humanizer-ru` skill. It removes AI-generic phrasing, canцелярит, and ensures the text sounds like Ashot.
+
+**Skip humanizer only for:**
+- Pure technical notifications ("Баланс: 10 TON")
+- Short acknowledgments ("Опубликовано")
+- Voice transcriptions (already human)
+
+The humanizer is NOT optional for content posts — AI-generic text destroys trust fast in a personal brand channel.
+
 ### 2. Add image (optional but recommended for @ashotonline)
 
 - For daily AI digest: generate preview image via OpenRouter image model

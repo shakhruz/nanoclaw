@@ -234,6 +234,8 @@ If the task config sets `public_publish: true` and `public_channel: "@ashotonlin
 - **Hashtags at bottom:** `#AIновости #{date}`
 - **Preview image** generated via OpenRouter
 
+**Run through `humanizer-ru` before publishing (MANDATORY).** Public posts must not read as AI-generic — pass the draft through humanizer-ru skill to strip канцелярит, negative parallelisms, "важно отметить" phrases, and add Ashot's voice. Without this step, the channel sounds like a generic AI feed. Never skip.
+
 Template for public digest:
 
 ```
