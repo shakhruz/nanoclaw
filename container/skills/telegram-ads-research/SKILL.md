@@ -20,6 +20,20 @@ Find the best channels, bots, and search phrases to target with Telegram Ads. An
   - `client-profiles/<client>/profile.json` — structured data
   - `wiki/entities/<client>-funnel-strategy.md` — target audience
 
+## CRITICAL RULES — READ BEFORE STARTING
+
+1. **EVERY channel/bot MUST be verified via agent-browser or Telegram Scanner.** Do NOT invent @usernames from memory. Open tgstat.ru, extract real data, screenshot the page. If you can't verify it exists — don't include it.
+
+2. **Numbers must come from real sources.** Subscriber counts, avg views, ERR — extract from tgstat.ru/telemetr.me pages. If a stat is estimated, mark it explicitly: "~5K (est.)". Never present guesses as facts.
+
+3. **Character count is law.** Ad text ≤ 160 chars, CTA ≤ 30 chars. Count EVERY creative with `echo -n "<text>" | wc -c` before including. Reject and rewrite anything over limit.
+
+4. **NEVER fabricate case studies or testimonials.** No "Алишер, Ташкент: 23 клиента" unless this is a real person with a real result. Use product features and logical arguments instead. Fake social proof destroys trust and may violate Telegram Ads moderation rules.
+
+5. **Use Telegram Scanner for deep analysis.** For every Tier 1 channel, read at least 20 recent posts via Scanner MCP or `t.me/s/<channel>`. Describe what the channel actually posts, not what you assume from the name.
+
+6. **Save evidence.** For each verified channel, save a screenshot or tgstat page extract to `/workspace/group/telegram-ads-research/<client>/evidence/`. This proves the research is real.
+
 ## Telegram Ads Targeting Reference
 
 Telegram Ads (ads.telegram.org) supports three targeting types:
@@ -76,11 +90,20 @@ agent-browser open "https://telemetr.me/channels/search/?q=<keyword>"
 ```
 
 For each result page:
-1. Extract: channel name, @username, subscriber count, avg post views, ERR (engagement rate)
-2. Filter: subscribers > 1000 (required for ads targeting)
-3. Note: language, topic, posting frequency
+1. Take a snapshot: `agent-browser snapshot` — save to evidence folder
+2. Extract REAL data from the page: channel name, @username, subscriber count, avg post views, ERR
+3. Filter: subscribers > 1000 (required for ads targeting)
+4. Note: language, topic, posting frequency
+
+**Verification step:** For each channel, open `https://t.me/s/<username>` in agent-browser to confirm:
+- The channel exists and is public
+- The content matches the expected niche
+- It's active (posted within last 7 days)
+
+Channels that fail verification → remove from list. Do NOT include unverified channels.
 
 Save raw results to `/workspace/group/telegram-ads-research/<client>/channels-raw.md`
+Save screenshots to `/workspace/group/telegram-ads-research/<client>/evidence/`
 
 ### 2b. Deep channel analysis (Telegram Scanner)
 
@@ -150,9 +173,17 @@ Bot types valuable for targeting:
 | Marketing bots | Users do marketing | SMM schedulers, analytics |
 | Utility bots | Broad audience, specific intent | Currency, weather, translator |
 
-### 3c. Estimate reach
+### 3c. Verify and estimate reach
 
-Bots need 1000+ MAU to be targetable. If the bot page shows user stats, note them. Otherwise estimate from reviews, channel mentions, and web presence.
+Bots need 1000+ MAU to be targetable.
+
+**Verification:** For each bot, open `https://t.me/<bot_username>` in agent-browser:
+- Confirm the bot exists and responds
+- Read its description and /start message
+- Check if subscriber/user count is visible
+- If tgstat.ru has a page for the bot — extract real stats
+
+**Mark clearly:** "verified" vs "unverified (from catalog listing)". Only include bots you actually confirmed exist. If you can't open the bot page — drop it.
 
 ## Phase 4: Search Phrase Research
 
@@ -202,29 +233,26 @@ Score each phrase:
 
 ## Phase 5: Scoring & Ranking
 
-Create a master scoring table:
+Create a master scoring table. **Only include verified placements** — every row must have a source (tgstat URL, t.me/s/ screenshot, or Scanner data).
 
 ```markdown
 ## Scoring: <Client> Telegram Ads Placements
 
 ### Channels (ranked by score)
-| # | Channel | Subscribers | Views/post | Relevance | Category | Score |
-|---|---------|-------------|------------|-----------|----------|-------|
-| 1 | @channel_a | 45K | 8K | 9/10 | Direct | 92 |
-| 2 | @channel_b | 120K | 15K | 7/10 | Adjacent | 85 |
-| ... | | | | | | |
+| # | Channel | Subs | Avg Views | ERR | Source | Verified | Relevance | Category | Score |
+|---|---------|------|-----------|-----|--------|----------|-----------|----------|-------|
+| 1 | @channel_a | 45K | 8.2K | 18% | tgstat | ✅ | 9/10 | Direct | 92 |
+| 2 | @channel_b | 120K | 15K | 12% | t.me/s | ✅ | 7/10 | Adjacent | 85 |
 
 ### Bots (ranked by score)  
-| # | Bot | Est. MAU | Relevance | User Intent | Score |
-|---|-----|----------|-----------|-------------|-------|
-| 1 | @bot_a | 5K | 8/10 | Business tools | 88 |
-| ... | | | | | |
+| # | Bot | Est. MAU | Source | Verified | Relevance | User Intent | Score |
+|---|-----|----------|--------|----------|-----------|-------------|-------|
+| 1 | @bot_a | 5K | tgstat | ✅ | 8/10 | Business tools | 88 |
 
 ### Search Phrases (ranked by priority)
-| # | Phrase | Intent | Volume | Competition | Score |
-|---|--------|--------|--------|-------------|-------|
+| # | Phrase | Intent | Volume Est. | Competition | Score |
+|---|--------|--------|------------|-------------|-------|
 | 1 | "создать воронку продаж" | High | Medium | Low | 90 |
-| ... | | | | | |
 ```
 
 Scoring formula:
@@ -233,25 +261,45 @@ Scoring formula:
 - Engagement (views/ERR normalized 0-10) × 2
 - Intent match (0-10) × 3
 
+**Minimum for inclusion:** Verified = ✅ required for Tier 1 and Tier 2. Tier 3 can include unverified candidates marked with ⚠️.
+
 ## Phase 6: Generate Targeted Creatives
 
-For **each of the top 5-10 placements**, generate a personalized ad:
+For **each of the top 5-10 placements**, generate a personalized ad.
+
+### Mandatory character count
+
+Before finalizing ANY creative, count characters:
+```bash
+echo -n "Текст рекламы здесь" | wc -c
+# Must be ≤ 160 for ad text
+echo -n "Кнопка CTA" | wc -c  
+# Must be ≤ 30 for CTA button
+```
+If over limit — rewrite until it fits. Include the character count in the output: `[143/160]`.
+
+### No fake testimonials
+
+**NEVER** generate fictional case studies, fake client names, or invented results. Instead use:
+- Product features: "ИИ-воронка строится за 30 минут"
+- Logical arguments: "50 клиентов × $200 = $10K выручка"
+- Questions: "Готовый AI-бизнес за 4 недели — хочешь попробовать?"
+- Specific mechanics: "Платформа OctoFunnel + 6 месяцев бесплатно"
 
 ### Channel-specific creative
 
-Read the channel's content → understand audience → write ad that speaks their language:
+Read the channel's ACTUAL content (from Scanner or t.me/s/) → understand audience → write ad in their language:
 
 ```
 Канал: @uzbek_business (бизнес в Узбекистане, узб+рус, 30K подписчиков)
 Аудитория: предприниматели 25-45, Ташкент, ищут масштабирование
+Проверено: tgstat.ru + t.me/s/uzbek_business (скриншот в evidence/)
 
-Текст: "Ваш бизнес может продавать 24/7 — без менеджера. 
-ИИ-воронка берёт заявки из Instagram и Telegram автоматически"
-CTA: "Попробовать бесплатно"
+Текст: "ИИ-воронка продаёт 24/7. Без менеджера, без сайта" [49/160]
+CTA: "Попробовать бесплатно" [21/30]
 
-Почему работает: аудитория этого канала знает свой бизнес, 
-но не знает про автоматизацию. Конкретный результат (24/7 продажи) 
-резонирует с болью (нанимать менеджеров дорого).
+Почему работает: аудитория знает свой бизнес, но не знает 
+про автоматизацию. "24/7" резонирует с болью нанимать менеджеров.
 ```
 
 For each creative, also generate matching banner if the channel supports media ads.
