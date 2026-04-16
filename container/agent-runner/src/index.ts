@@ -610,9 +610,10 @@ async function runQuery(
           // bridge gateway IP (passed from host via NANOCLAW_HOST_GATEWAY).
           const scannerHost =
             process.env.NANOCLAW_HOST_GATEWAY || 'host.containers.internal';
+          // FastMCP streamable-http endpoint is /mcp (not /sse)
           servers['telegram-scanner'] = {
             type: 'http',
-            url: `http://${scannerHost}:${telegramScannerPort}/sse`,
+            url: `http://${scannerHost}:${telegramScannerPort}/mcp`,
           };
           log(`Telegram Scanner MCP server configured (host=${scannerHost})`);
         }
