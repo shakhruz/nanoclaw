@@ -801,10 +801,7 @@ async function main(): Promise<void> {
         null,
         JSON.stringify({ userName, languageCode }),
       );
-      logger.info(
-        { chatJid, folder, userName },
-        'Auto-registered public lead',
-      );
+      logger.info({ chatJid, folder, userName }, 'Auto-registered public lead');
     },
   };
 

@@ -728,7 +728,13 @@ export function logFunnelEvent(
   db.prepare(
     `INSERT INTO funnel_events (lead_jid, event_type, payload, metadata, created_at)
      VALUES (?, ?, ?, ?, ?)`,
-  ).run(leadJid, eventType, payload ?? null, metadata ?? null, new Date().toISOString());
+  ).run(
+    leadJid,
+    eventType,
+    payload ?? null,
+    metadata ?? null,
+    new Date().toISOString(),
+  );
 }
 
 export function getFunnelMetrics(

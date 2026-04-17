@@ -253,18 +253,16 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     );
                   }
                 }
-              } else if (
-                data.type === 'notify_owner' &&
-                data.text
-              ) {
+              } else if (data.type === 'notify_owner' && data.text) {
                 // Public lead groups can notify the owner (main group) about
                 // hot leads, consultation requests, etc. Only isPublic groups
                 // can use this — it sends to the main group's chatJid.
-                const senderGroup = registeredGroups[
-                  Object.keys(registeredGroups).find(
-                    (jid) => registeredGroups[jid].folder === sourceGroup,
-                  ) || ''
-                ];
+                const senderGroup =
+                  registeredGroups[
+                    Object.keys(registeredGroups).find(
+                      (jid) => registeredGroups[jid].folder === sourceGroup,
+                    ) || ''
+                  ];
                 if (senderGroup?.isPublic) {
                   // Find main group's chatJid
                   const mainJid = Object.keys(registeredGroups).find(
