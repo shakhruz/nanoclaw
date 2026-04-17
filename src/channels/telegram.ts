@@ -158,17 +158,14 @@ export class TelegramChannel implements Channel {
           'Упакуйте ваши знания в онлайн-курс с AI за 30 минут: https://ashotai.uz',
         business:
           'AI-анализ вашего онлайн-бизнеса бесплатно: https://ashotai.uz',
-        startup:
-          'AI-воронка продаж для стартапа за 30 мин: https://ashotai.uz',
-        marketer:
-          'AI-инструменты для маркетолога: https://ashotai.uz',
-        freelancer:
-          'AI-анализ продаж для фрилансера: https://ashotai.uz',
+        startup: 'AI-воронка продаж для стартапа за 30 мин: https://ashotai.uz',
+        marketer: 'AI-инструменты для маркетолога: https://ashotai.uz',
+        freelancer: 'AI-анализ продаж для фрилансера: https://ashotai.uz',
       };
 
       const text =
         (payload && messages[payload]) ||
-        `Привет! Я ${ASSISTANT_NAME} — ассистент эксперта по ИИ Шахруза Ашота Аширова.\n\nРасскажите о вашем бизнесе — помогу подобрать решение.`;
+        `Привет! Я ${ASSISTANT_NAME} — ассистент эксперта по ИИ Шахруза Ашота Аширова. Секунду, подготовлю для вас информацию...`;
 
       await ctx.reply(text);
 
