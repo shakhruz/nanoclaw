@@ -71,50 +71,145 @@ export class TelegramChannel implements Channel {
    * Returns the container-relative path (e.g. /workspace/group/attachments/photo_123.jpg)
    * or null if the download fails.
    */
+  /**
+   * Download a Telegram file via Bot API (<20MB) or fall back to MTProto
+   * via Telegram Scanner for large files (video, audio).
+   */
   private async downloadFile(
     fileId: string,
     groupFolder: string,
     filename: string,
+    mtprotoFallback?: { chatId: number; messageId: number },
   ): Promise<string | null> {
     if (!this.bot) return null;
 
+    const groupDir = resolveGroupFolderPath(groupFolder);
+    const attachDir = path.join(groupDir, 'attachments');
+    fs.mkdirSync(attachDir, { recursive: true });
+
+    // Try Bot API first (works for files <20MB)
     try {
       const file = await this.bot.api.getFile(fileId);
       if (!file.file_path) {
         logger.warn({ fileId }, 'Telegram getFile returned no file_path');
-        return null;
-      }
+        // Fall through to MTProto fallback
+      } else {
+        const tgExt = path.extname(file.file_path);
+        const localExt = path.extname(filename);
+        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const finalName = localExt ? safeName : `${safeName}${tgExt}`;
+        const destPath = path.join(attachDir, finalName);
 
-      const groupDir = resolveGroupFolderPath(groupFolder);
-      const attachDir = path.join(groupDir, 'attachments');
-      fs.mkdirSync(attachDir, { recursive: true });
-
-      // Sanitize filename and add extension from Telegram's file_path if missing
-      const tgExt = path.extname(file.file_path);
-      const localExt = path.extname(filename);
-      const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const finalName = localExt ? safeName : `${safeName}${tgExt}`;
-      const destPath = path.join(attachDir, finalName);
-
-      const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
-      const resp = await fetch(fileUrl);
-      if (!resp.ok) {
+        const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
+        const resp = await fetch(fileUrl);
+        if (resp.ok) {
+          const buffer = Buffer.from(await resp.arrayBuffer());
+          fs.writeFileSync(destPath, buffer);
+          logger.info({ fileId, dest: destPath }, 'Telegram file downloaded via Bot API');
+          return `/workspace/group/attachments/${finalName}`;
+        }
         logger.warn(
           { fileId, status: resp.status },
-          'Telegram file download failed',
+          'Telegram file download failed via Bot API',
         );
-        return null;
       }
-
-      const buffer = Buffer.from(await resp.arrayBuffer());
-      fs.writeFileSync(destPath, buffer);
-
-      logger.info({ fileId, dest: destPath }, 'Telegram file downloaded');
-      return `/workspace/group/attachments/${finalName}`;
-    } catch (err) {
-      logger.error({ fileId, err }, 'Failed to download Telegram file');
-      return null;
+    } catch (err: any) {
+      // Bot API getFile fails with 400 for files >20MB
+      const errMsg = err?.message || String(err);
+      if (errMsg.includes('file is too big') || errMsg.includes('400')) {
+        logger.info(
+          { fileId },
+          'File too large for Bot API (>20MB), trying MTProto fallback',
+        );
+      } else {
+        logger.error({ fileId, err }, 'Failed to download via Bot API');
+      }
     }
+
+    // MTProto fallback via Telegram Scanner (no size limit)
+    if (mtprotoFallback) {
+      try {
+        const scannerPort = process.env.TELEGRAM_SCANNER_PORT || '3002';
+        const scannerUrl = `http://localhost:${scannerPort}/mcp`;
+        const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+        // Initialize MCP session
+        const initResp = await fetch(scannerUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-03-26',
+              capabilities: {},
+              clientInfo: { name: 'nanoclaw', version: '1.0' },
+            },
+          }),
+        });
+        const initText = await initResp.text();
+        const sessionMatch = initResp.headers
+          .get('mcp-session-id');
+
+        if (!sessionMatch) {
+          logger.warn('MTProto fallback: no MCP session ID');
+          return null;
+        }
+
+        // Call download_media tool
+        const callResp = await fetch(scannerUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            'Mcp-Session-Id': sessionMatch,
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/call',
+            params: {
+              name: 'download_media',
+              arguments: {
+                chat_id: String(mtprotoFallback.chatId),
+                message_id: mtprotoFallback.messageId,
+                dest_dir: attachDir,
+                filename: safeName,
+              },
+            },
+          }),
+        });
+
+        const callText = await callResp.text();
+        // Parse SSE response — extract JSON from "data:" line
+        const dataMatch = callText.match(/data:\s*({.*})/);
+        if (dataMatch) {
+          const rpcResult = JSON.parse(dataMatch[1]);
+          const content = rpcResult?.result?.content?.[0]?.text;
+          if (content) {
+            const result = JSON.parse(content);
+            if (result.path && !result.error) {
+              const downloadedName = path.basename(result.path);
+              logger.info(
+                { fileId, path: result.path, size: result.size },
+                'File downloaded via MTProto fallback',
+              );
+              return `/workspace/group/attachments/${downloadedName}`;
+            }
+            logger.warn({ fileId, error: result.error }, 'MTProto download_media returned error');
+          }
+        }
+        logger.warn({ fileId }, 'MTProto fallback: could not parse response');
+      } catch (err) {
+        logger.error({ fileId, err }, 'MTProto fallback failed');
+      }
+    }
+
+    return null;
   }
 
   async connect(): Promise<void> {
@@ -324,6 +419,7 @@ export class TelegramChannel implements Channel {
     });
 
     // Handle non-text messages: download files when possible, fall back to placeholders.
+    // For large files (>20MB), falls back to MTProto via Telegram Scanner.
     const storeMedia = (
       ctx: any,
       placeholder: string,
@@ -364,12 +460,17 @@ export class TelegramChannel implements Channel {
       };
 
       // If we have a file_id, attempt to download; deliver asynchronously
+      // Pass MTProto fallback context for large files (>20MB Bot API limit)
       if (opts?.fileId) {
         const msgId = ctx.message.message_id.toString();
         const filename =
           opts.filename ||
           `${placeholder.replace(/[\[\] ]/g, '').toLowerCase()}_${msgId}`;
-        this.downloadFile(opts.fileId, group.folder, filename).then(
+        const mtprotoFallback = {
+          chatId: ctx.chat.id,
+          messageId: ctx.message.message_id,
+        };
+        this.downloadFile(opts.fileId, group.folder, filename, mtprotoFallback).then(
           (filePath) => {
             if (filePath) {
               deliver(`${placeholder} (${filePath})${caption}`);
