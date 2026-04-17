@@ -105,7 +105,10 @@ export class TelegramChannel implements Channel {
         if (resp.ok) {
           const buffer = Buffer.from(await resp.arrayBuffer());
           fs.writeFileSync(destPath, buffer);
-          logger.info({ fileId, dest: destPath }, 'Telegram file downloaded via Bot API');
+          logger.info(
+            { fileId, dest: destPath },
+            'Telegram file downloaded via Bot API',
+          );
           return `/workspace/group/attachments/${finalName}`;
         }
         logger.warn(
@@ -152,8 +155,7 @@ export class TelegramChannel implements Channel {
           }),
         });
         const initText = await initResp.text();
-        const sessionMatch = initResp.headers
-          .get('mcp-session-id');
+        const sessionMatch = initResp.headers.get('mcp-session-id');
 
         if (!sessionMatch) {
           logger.warn('MTProto fallback: no MCP session ID');
@@ -200,7 +202,10 @@ export class TelegramChannel implements Channel {
               );
               return `/workspace/group/attachments/${downloadedName}`;
             }
-            logger.warn({ fileId, error: result.error }, 'MTProto download_media returned error');
+            logger.warn(
+              { fileId, error: result.error },
+              'MTProto download_media returned error',
+            );
           }
         }
         logger.warn({ fileId }, 'MTProto fallback: could not parse response');
@@ -248,14 +253,12 @@ export class TelegramChannel implements Channel {
       const payload = ctx.match; // deep link parameter (?start=uz, ?start=expert etc.)
 
       const messages: Record<string, string> = {
-        uz: 'OctoFunnel — AI-платформа для бизнеса. Получите бесплатный анализ вашего бизнеса: https://ashotai.uz',
-        expert:
-          'Упакуйте ваши знания в онлайн-курс с AI за 30 минут: https://ashotai.uz',
-        business:
-          'AI-анализ вашего онлайн-бизнеса бесплатно: https://ashotai.uz',
-        startup: 'AI-воронка продаж для стартапа за 30 мин: https://ashotai.uz',
-        marketer: 'AI-инструменты для маркетолога: https://ashotai.uz',
-        freelancer: 'AI-анализ продаж для фрилансера: https://ashotai.uz',
+        uz: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота, эксперта по ИИ для бизнеса. Могу бесплатно проанализировать ваш бизнес и показать как ИИ поможет привлекать клиентов. Секунду...`,
+        expert: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота. Поможем упаковать вашу экспертизу в онлайн-курс с помощью ИИ. Секунду...`,
+        business: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота, эксперта по ИИ для бизнеса. Могу бесплатно проанализировать ваш бизнес и подсказать точки роста. Секунду...`,
+        startup: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота. Покажем как запустить AI-воронку продаж для вашего стартапа. Секунду...`,
+        marketer: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота. Расскажу как AI-инструменты усилят ваш маркетинг. Секунду...`,
+        freelancer: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота. Помогу автоматизировать привлечение клиентов для вашего фриланса. Секунду...`,
       };
 
       const text =
@@ -470,15 +473,18 @@ export class TelegramChannel implements Channel {
           chatId: ctx.chat.id,
           messageId: ctx.message.message_id,
         };
-        this.downloadFile(opts.fileId, group.folder, filename, mtprotoFallback).then(
-          (filePath) => {
-            if (filePath) {
-              deliver(`${placeholder} (${filePath})${caption}`);
-            } else {
-              deliver(`${placeholder}${caption}`);
-            }
-          },
-        );
+        this.downloadFile(
+          opts.fileId,
+          group.folder,
+          filename,
+          mtprotoFallback,
+        ).then((filePath) => {
+          if (filePath) {
+            deliver(`${placeholder} (${filePath})${caption}`);
+          } else {
+            deliver(`${placeholder}${caption}`);
+          }
+        });
         return;
       }
 

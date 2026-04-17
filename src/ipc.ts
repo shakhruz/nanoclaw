@@ -253,6 +253,38 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     );
                   }
                 }
+              } else if (
+                data.type === 'notify_owner' &&
+                data.text
+              ) {
+                // Public lead groups can notify the owner (main group) about
+                // hot leads, consultation requests, etc. Only isPublic groups
+                // can use this — it sends to the main group's chatJid.
+                const senderGroup = registeredGroups[
+                  Object.keys(registeredGroups).find(
+                    (jid) => registeredGroups[jid].folder === sourceGroup,
+                  ) || ''
+                ];
+                if (senderGroup?.isPublic) {
+                  // Find main group's chatJid
+                  const mainJid = Object.keys(registeredGroups).find(
+                    (jid) => registeredGroups[jid].isMain,
+                  );
+                  if (mainJid) {
+                    const leadName = data.leadName || 'Лид';
+                    const text = `🔔 *Новый горячий лид*\n${leadName}: ${data.text}`;
+                    await deps.sendMessage(mainJid, text);
+                    logger.info(
+                      { sourceGroup, mainJid, leadName },
+                      'Owner notified about hot lead',
+                    );
+                  }
+                } else {
+                  logger.warn(
+                    { sourceGroup },
+                    'notify_owner from non-public group blocked',
+                  );
+                }
               }
               fs.unlinkSync(filePath);
             } catch (err) {

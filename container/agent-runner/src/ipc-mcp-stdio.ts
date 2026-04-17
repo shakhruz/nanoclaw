@@ -256,6 +256,46 @@ The optional caption supports Markdown formatting (*bold*, _italic_, \`code\`).`
 );
 
 server.tool(
+  'notify_owner',
+  `Notify the owner (Shakhruz) about this lead. Use when:
+• Lead is ready for a consultation (collected @username)
+• Lead is a hot prospect (interested in paid service)
+• Lead is a potential partner (SMM/targeting/development)
+
+The notification is delivered to the main chat. Include all relevant context
+so the owner can act immediately without reading the conversation.`,
+  {
+    text: z
+      .string()
+      .describe(
+        'Notification text. Include: lead name, business, what they need, their @username if collected.',
+      ),
+    leadName: z
+      .string()
+      .optional()
+      .describe('Lead display name for the notification header'),
+  },
+  async (args) => {
+    writeIpcFile(MESSAGES_DIR, {
+      type: 'notify_owner',
+      text: args.text,
+      leadName: args.leadName || 'Лид',
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: 'Owner notified.',
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
   'schedule_task',
   `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools. Returns the task ID for future reference. To modify an existing task, use update_task instead.
 
