@@ -157,6 +157,29 @@ function createSchema(database: Database.Database): void {
   } catch {
     /* columns already exist */
   }
+
+  // Add is_public column for auto-registered public leads (restricted permissions)
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN is_public INTEGER DEFAULT 0`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Funnel events table for tracking lead journey (start → message → cta → conversion)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS funnel_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lead_jid TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      payload TEXT,
+      metadata TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_funnel_events_type ON funnel_events(event_type);
+    CREATE INDEX IF NOT EXISTS idx_funnel_events_lead ON funnel_events(lead_jid);
+  `);
 }
 
 export function initDatabase(): void {
@@ -609,6 +632,7 @@ export function getRegisteredGroup(
         container_config: string | null;
         requires_trigger: number | null;
         is_main: number | null;
+        is_public: number | null;
       }
     | undefined;
   if (!row) return undefined;
@@ -631,6 +655,7 @@ export function getRegisteredGroup(
     requiresTrigger:
       row.requires_trigger === null ? undefined : row.requires_trigger === 1,
     isMain: row.is_main === 1 ? true : undefined,
+    isPublic: row.is_public === 1 ? true : undefined,
   };
 }
 
@@ -639,8 +664,8 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     throw new Error(`Invalid group folder "${group.folder}" for JID ${jid}`);
   }
   db.prepare(
-    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main, is_public)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     jid,
     group.name,
@@ -650,6 +675,7 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     group.containerConfig ? JSON.stringify(group.containerConfig) : null,
     group.requiresTrigger === undefined ? 1 : group.requiresTrigger ? 1 : 0,
     group.isMain ? 1 : 0,
+    group.isPublic ? 1 : 0,
   );
 }
 
@@ -663,6 +689,7 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     container_config: string | null;
     requires_trigger: number | null;
     is_main: number | null;
+    is_public: number | null;
   }>;
   const result: Record<string, RegisteredGroup> = {};
   for (const row of rows) {
@@ -684,9 +711,36 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
       requiresTrigger:
         row.requires_trigger === null ? undefined : row.requires_trigger === 1,
       isMain: row.is_main === 1 ? true : undefined,
+      isPublic: row.is_public === 1 ? true : undefined,
     };
   }
   return result;
+}
+
+// --- Funnel events ---
+
+export function logFunnelEvent(
+  leadJid: string,
+  eventType: string,
+  payload?: string | null,
+  metadata?: string | null,
+): void {
+  db.prepare(
+    `INSERT INTO funnel_events (lead_jid, event_type, payload, metadata, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(leadJid, eventType, payload ?? null, metadata ?? null, new Date().toISOString());
+}
+
+export function getFunnelMetrics(
+  sinceDays: number = 7,
+): Array<{ event_type: string; count: number }> {
+  return db
+    .prepare(
+      `SELECT event_type, COUNT(*) as count FROM funnel_events
+       WHERE created_at > datetime('now', '-' || ? || ' days')
+       GROUP BY event_type ORDER BY count DESC`,
+    )
+    .all(sinceDays) as Array<{ event_type: string; count: number }>;
 }
 
 // --- JSON migration ---

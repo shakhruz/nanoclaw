@@ -44,6 +44,7 @@ import {
   getNewMessages,
   getRouterState,
   initDatabase,
+  logFunnelEvent,
   setRegisteredGroup,
   setRouterState,
   setSession,
@@ -83,6 +84,7 @@ let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
 let messageLoopRunning = false;
+let autoRegHistory: number[] = []; // timestamps for rate limiting auto-registration
 
 const channels: Channel[] = [];
 const queue = new GroupQueue();
@@ -173,11 +175,12 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
   // identity and instructions from the first run.  (Fixes #1391)
   const groupMdFile = path.join(groupDir, 'CLAUDE.md');
   if (!fs.existsSync(groupMdFile)) {
-    const templateFile = path.join(
-      GROUPS_DIR,
-      group.isMain ? 'main' : 'global',
-      'CLAUDE.md',
-    );
+    const templateDir = group.isMain
+      ? 'main'
+      : group.isPublic
+        ? '_public-lead'
+        : 'global';
+    const templateFile = path.join(GROUPS_DIR, templateDir, 'CLAUDE.md');
     if (fs.existsSync(templateFile)) {
       let content = fs.readFileSync(templateFile, 'utf-8');
       if (ASSISTANT_NAME !== 'Andy') {
@@ -762,6 +765,47 @@ async function main(): Promise<void> {
       isGroup?: boolean,
     ) => storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
     registeredGroups: () => registeredGroups,
+    // Auto-register private Telegram chats as public leads (sales funnel mode).
+    // Called by telegram.ts when an unregistered private chat sends a message.
+    onAutoRegister: (
+      chatJid: string,
+      userName: string,
+      userId?: number,
+      languageCode?: string,
+    ) => {
+      if (registeredGroups[chatJid]) return; // already registered
+
+      // Rate limit: max 20 auto-registrations per hour
+      const now = Date.now();
+      autoRegHistory = autoRegHistory.filter((t) => now - t < 3600000);
+      if (autoRegHistory.length >= 20) {
+        logger.warn({ chatJid }, 'Auto-registration rate limit exceeded');
+        return;
+      }
+      autoRegHistory.push(now);
+
+      const folder = `tg_lead-${userId || chatJid.replace('tg:', '')}`;
+
+      registerGroup(chatJid, {
+        name: userName || 'Lead',
+        folder,
+        trigger: `@${ASSISTANT_NAME}`,
+        added_at: new Date().toISOString(),
+        requiresTrigger: false,
+        isPublic: true,
+      });
+
+      logFunnelEvent(
+        chatJid,
+        'start',
+        null,
+        JSON.stringify({ userName, languageCode }),
+      );
+      logger.info(
+        { chatJid, folder, userName },
+        'Auto-registered public lead',
+      );
+    },
   };
 
   // Create and connect all registered channels.

@@ -3,9 +3,26 @@
 
 FROM node:22-slim
 
-# Install system dependencies for Chromium
-RUN apt-get update && apt-get install -y \
-    chromium \
+# Chromium version pin — see explanation below
+# Override at build: ./container/build.sh --build-arg CHROMIUM_VERSION=<version>
+# Empty value means "latest available" (drift risk — see below)
+ARG CHROMIUM_VERSION=147.0.7727.55-1~deb12u1
+
+# Why pin: telegram-ads session is tied to browser fingerprint. If chromium
+# version drifts on rebuild, ads.telegram.org sees a "new device" and forces
+# re-authorization. Pinning keeps the fingerprint stable across rebuilds.
+# When you need to upgrade: bump ARG, rebuild, re-auth once via /telegram-ads-auth.
+# If the pinned version disappears from Debian bookworm repo, the build will
+# fail with "E: Version ... not found" — update ARG to current version.
+
+# Install system dependencies. Chromium is pinned via ARG above — if the ARG is
+# empty, we install "latest", otherwise "chromium=<ver>". We use an intermediate
+# shell variable to avoid expanding the version twice in the apt-get args list.
+RUN apt-get update && \
+    CHROMIUM_PKG="${CHROMIUM_VERSION:+chromium=${CHROMIUM_VERSION}}" && \
+    CHROMIUM_PKG="${CHROMIUM_PKG:-chromium}" && \
+    apt-get install -y \
+    "$CHROMIUM_PKG" \
     fonts-liberation \
     fonts-noto-color-emoji \
     libgbm1 \
@@ -27,6 +44,7 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-rus \
     tesseract-ocr-eng \
+    && apt-mark hold chromium \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Chromium path for agent-browser

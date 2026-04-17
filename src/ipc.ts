@@ -602,9 +602,9 @@ export async function processTaskIpc(
           );
           break;
         }
-        // Defense in depth: agent cannot set isMain via IPC.
-        // Preserve isMain from the existing registration so IPC config
-        // updates (e.g. adding additionalMounts) don't strip the flag.
+        // Defense in depth: agent cannot set isMain or isPublic via IPC.
+        // Preserve both flags from existing registration so IPC config
+        // updates (e.g. adding additionalMounts) don't strip or escalate them.
         const existingGroup = registeredGroups[data.jid];
         deps.registerGroup(data.jid, {
           name: data.name,
@@ -614,6 +614,7 @@ export async function processTaskIpc(
           containerConfig: data.containerConfig,
           requiresTrigger: data.requiresTrigger,
           isMain: existingGroup?.isMain,
+          isPublic: existingGroup?.isPublic,
         });
       } else {
         logger.warn(

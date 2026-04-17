@@ -22,6 +22,12 @@ export interface TelegramChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
+  onAutoRegister?: (
+    chatJid: string,
+    userName: string,
+    userId?: number,
+    languageCode?: string,
+  ) => void;
 }
 
 /**
@@ -138,9 +144,81 @@ export class TelegramChannel implements Channel {
       ctx.reply(`${ASSISTANT_NAME} is online.`);
     });
 
+    // Welcome handler for new users — works for ANY chat, not just registered
+    // groups. Critical for Telegram Ads: ads link to ?start=<payload>, and
+    // Telegram's ad review bot sends /start to verify the bot responds.
+    // After sending the quick welcome, auto-registers private chats so the
+    // next message gets full AI processing (sales funnel mode).
+    this.bot.command('start', async (ctx) => {
+      const payload = ctx.match; // deep link parameter (?start=uz, ?start=expert etc.)
+
+      const messages: Record<string, string> = {
+        uz: 'OctoFunnel — AI-платформа для бизнеса. Получите бесплатный анализ вашего бизнеса: https://ashotai.uz',
+        expert:
+          'Упакуйте ваши знания в онлайн-курс с AI за 30 минут: https://ashotai.uz',
+        business:
+          'AI-анализ вашего онлайн-бизнеса бесплатно: https://ashotai.uz',
+        startup:
+          'AI-воронка продаж для стартапа за 30 мин: https://ashotai.uz',
+        marketer:
+          'AI-инструменты для маркетолога: https://ashotai.uz',
+        freelancer:
+          'AI-анализ продаж для фрилансера: https://ashotai.uz',
+      };
+
+      const text =
+        (payload && messages[payload]) ||
+        `Привет! Я ${ASSISTANT_NAME} — ассистент эксперта по ИИ Шахруза Ашота Аширова.\n\nРасскажите о вашем бизнесе — помогу подобрать решение.`;
+
+      await ctx.reply(text);
+
+      // Send typing indicator so user knows we're preparing a response
+      await ctx.api.sendChatAction(ctx.chat.id, 'typing').catch(() => {});
+
+      // Auto-register private chats as public leads for full AI conversation
+      const chatJid = `tg:${ctx.chat.id}`;
+      if (ctx.chat.type === 'private' && this.opts.onAutoRegister) {
+        const senderName =
+          ctx.from?.first_name ||
+          ctx.from?.username ||
+          ctx.from?.id.toString() ||
+          'Lead';
+        this.opts.onAutoRegister(
+          chatJid,
+          senderName,
+          ctx.from?.id,
+          ctx.from?.language_code,
+        );
+
+        // Store the /start as the first message so the agent sees it
+        const group = this.opts.registeredGroups()[chatJid];
+        if (group) {
+          const startContent = payload
+            ? `[System: New lead from Telegram Ads, deep link: ?start=${payload}. Welcome message already sent — do NOT greet again. Start with qualification question.]\n/start ${payload}`
+            : `[System: New user started the bot. Welcome message already sent — do NOT greet again. Start with qualification question (Шаг 1 из CLAUDE.md).]\n/start`;
+          this.opts.onMessage(chatJid, {
+            id: ctx.message?.message_id?.toString() || Date.now().toString(),
+            chat_jid: chatJid,
+            sender: ctx.from?.id.toString() || '',
+            sender_name: senderName,
+            content: startContent,
+            timestamp: ctx.message
+              ? new Date(ctx.message.date * 1000).toISOString()
+              : new Date().toISOString(),
+            is_from_me: false,
+          });
+        }
+      }
+
+      logger.info(
+        { chatId: ctx.chat.id, payload: payload || '(none)' },
+        'Telegram /start handled',
+      );
+    });
+
     // Telegram bot commands handled above — skip them in the general handler
     // so they don't also get stored as messages. All other /commands flow through.
-    const TELEGRAM_BOT_COMMANDS = new Set(['chatid', 'ping']);
+    const TELEGRAM_BOT_COMMANDS = new Set(['chatid', 'ping', 'start']);
 
     this.bot.on('message:text', async (ctx) => {
       if (ctx.message.text.startsWith('/')) {
@@ -207,8 +285,18 @@ export class TelegramChannel implements Channel {
         isGroup,
       );
 
-      // Only deliver full message for registered groups
-      const group = this.opts.registeredGroups()[chatJid];
+      // Deliver full message for registered groups. For unregistered private
+      // chats (leads from ads), auto-register first then deliver.
+      let group = this.opts.registeredGroups()[chatJid];
+      if (!group && ctx.chat.type === 'private' && this.opts.onAutoRegister) {
+        this.opts.onAutoRegister(
+          chatJid,
+          senderName,
+          ctx.from?.id,
+          ctx.from?.language_code,
+        );
+        group = this.opts.registeredGroups()[chatJid];
+      }
       if (!group) {
         logger.debug(
           { chatJid, chatName },

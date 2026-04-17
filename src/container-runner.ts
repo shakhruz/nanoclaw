@@ -116,15 +116,27 @@ function buildVolumeMounts(
       readonly: false,
     });
 
-    // Global memory directory (read-only for non-main)
-    // Only directory mounts are supported, not file mounts
-    const globalDir = path.join(GROUPS_DIR, 'global');
-    if (fs.existsSync(globalDir)) {
-      mounts.push({
-        hostPath: globalDir,
-        containerPath: '/workspace/global',
-        readonly: true,
-      });
+    if (group.isPublic) {
+      // PUBLIC LEAD: No global memory (contains owner's personal wiki/notes).
+      // Instead, mount shared product knowledge as /workspace/products (read-only).
+      const productsDir = path.join(GROUPS_DIR, '_shared-products');
+      if (fs.existsSync(productsDir)) {
+        mounts.push({
+          hostPath: productsDir,
+          containerPath: '/workspace/products',
+          readonly: true,
+        });
+      }
+    } else {
+      // Trusted non-main groups get global memory (read-only)
+      const globalDir = path.join(GROUPS_DIR, 'global');
+      if (fs.existsSync(globalDir)) {
+        mounts.push({
+          hostPath: globalDir,
+          containerPath: '/workspace/global',
+          readonly: true,
+        });
+      }
     }
   }
 
@@ -162,10 +174,19 @@ function buildVolumeMounts(
   }
 
   // Sync skills from container/skills/ into each group's .claude/skills/
+  // Public lead groups get only basic skills — no internal tools (ads, research, etc.)
+  const PUBLIC_LEAD_SKILLS = new Set([
+    'capabilities',
+    'status',
+    'formatting',
+    'telegram-reactions',
+    'inline-buttons',
+  ]);
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
   const skillsDst = path.join(groupSessionsDir, 'skills');
   if (fs.existsSync(skillsSrc)) {
     for (const skillDir of fs.readdirSync(skillsSrc)) {
+      if (group.isPublic && !PUBLIC_LEAD_SKILLS.has(skillDir)) continue;
       const srcDir = path.join(skillsSrc, skillDir);
       if (!fs.statSync(srcDir).isDirectory()) continue;
       const dstDir = path.join(skillsDst, skillDir);
@@ -178,26 +199,42 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Gmail credentials directory (for Gmail MCP inside the container)
-  const homeDir = os.homedir();
-  const gmailDir = path.join(homeDir, '.gmail-mcp');
-  if (fs.existsSync(gmailDir)) {
-    mounts.push({
-      hostPath: gmailDir,
-      containerPath: '/home/node/.gmail-mcp',
-      readonly: false, // MCP may need to refresh OAuth tokens
-    });
-  }
+  // agent-browser sessions directory — persists --session-name cookies/localStorage
+  // across container restarts. Without this mount, sessions stored in
+  // ~/.agent-browser/sessions/ are lost when the container is destroyed.
+  // Note: --profile flag is broken in agent-browser (GitHub #259) — use
+  // --session-name instead, which works correctly when this dir is mounted.
+  const agentBrowserSessionsDir = path.join(groupDir, 'agent-browser-sessions');
+  fs.mkdirSync(agentBrowserSessionsDir, { recursive: true });
+  mounts.push({
+    hostPath: agentBrowserSessionsDir,
+    containerPath: '/home/node/.agent-browser/sessions',
+    readonly: false,
+  });
 
-  // Google Calendar MCP credentials directory (separate from gmail; reuses
-  // the same OAuth client but stores its own tokens.json with calendar scope)
-  const gcalDir = path.join(homeDir, '.config', 'google-calendar-mcp');
-  if (fs.existsSync(gcalDir)) {
-    mounts.push({
-      hostPath: gcalDir,
-      containerPath: '/home/node/.config/google-calendar-mcp',
-      readonly: false, // MCP may need to refresh OAuth tokens
-    });
+  // Gmail and Google Calendar credentials — ONLY for non-public groups.
+  // Public lead containers must NOT get access to owner's email/calendar.
+  const homeDir = os.homedir();
+  if (!group.isPublic) {
+    const gmailDir = path.join(homeDir, '.gmail-mcp');
+    if (fs.existsSync(gmailDir)) {
+      mounts.push({
+        hostPath: gmailDir,
+        containerPath: '/home/node/.gmail-mcp',
+        readonly: false, // MCP may need to refresh OAuth tokens
+      });
+    }
+
+    // Google Calendar MCP credentials directory (separate from gmail; reuses
+    // the same OAuth client but stores its own tokens.json with calendar scope)
+    const gcalDir = path.join(homeDir, '.config', 'google-calendar-mcp');
+    if (fs.existsSync(gcalDir)) {
+      mounts.push({
+        hostPath: gcalDir,
+        containerPath: '/home/node/.config/google-calendar-mcp',
+        readonly: false, // MCP may need to refresh OAuth tokens
+      });
+    }
   }
 
   // Per-group IPC namespace: each group gets its own IPC directory
@@ -274,6 +311,7 @@ function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
   isMain: boolean,
+  isPublic: boolean = false,
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
@@ -285,6 +323,12 @@ function buildContainerArgs(
     '-e',
     `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
   );
+
+  // Public lead containers use Sonnet (lighter model) to reduce rate limiting
+  // and speed up responses. Opus is overkill for structured sales conversations.
+  if (isPublic) {
+    args.push('-e', 'CLAUDE_MODEL=claude-sonnet-4-5-20250514');
+  }
 
   // Expose host gateway IP so container-side code can reach host services
   // (e.g., telegram-scanner MCP on :3002) without relying on docker-specific
@@ -304,47 +348,55 @@ function buildContainerArgs(
 
   // Pass through optional integration secrets that the agent-runner uses
   // to configure additional MCP servers (Parallel AI, Todoist, etc.).
-  // These are NOT routed through the credential proxy — they're plain
-  // env var passthrough. Acceptable because the container is isolated and
-  // the host user is the only consumer.
-  const integrationSecrets = readEnvFile([
-    'PARALLEL_API_KEY',
-    'TODOIST_API_TOKEN',
-    'APIFY_TOKEN',
-    'OPENROUTER_API_KEY',
-    'ZERNIO_API_KEY',
-    'COMPOSIO_API_KEY',
-    'TELEGRAM_SCANNER_PORT',
-  ]);
-  if (integrationSecrets.PARALLEL_API_KEY) {
-    args.push('-e', `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`);
-  }
-  if (integrationSecrets.TODOIST_API_TOKEN) {
-    args.push(
-      '-e',
-      `TODOIST_API_TOKEN=${integrationSecrets.TODOIST_API_TOKEN}`,
-    );
-  }
-  if (integrationSecrets.APIFY_TOKEN) {
-    args.push('-e', `APIFY_TOKEN=${integrationSecrets.APIFY_TOKEN}`);
-  }
-  if (integrationSecrets.OPENROUTER_API_KEY) {
-    args.push(
-      '-e',
-      `OPENROUTER_API_KEY=${integrationSecrets.OPENROUTER_API_KEY}`,
-    );
-  }
-  if (integrationSecrets.ZERNIO_API_KEY) {
-    args.push('-e', `ZERNIO_API_KEY=${integrationSecrets.ZERNIO_API_KEY}`);
-  }
-  if (integrationSecrets.COMPOSIO_API_KEY) {
-    args.push('-e', `COMPOSIO_API_KEY=${integrationSecrets.COMPOSIO_API_KEY}`);
-  }
-  if (integrationSecrets.TELEGRAM_SCANNER_PORT) {
-    args.push(
-      '-e',
-      `TELEGRAM_SCANNER_PORT=${integrationSecrets.TELEGRAM_SCANNER_PORT}`,
-    );
+  // Public lead containers get NO integration secrets — they don't need
+  // Gmail, Calendar, Parallel, Scanner, etc. This also speeds up container
+  // startup significantly (fewer MCP child processes).
+  if (!isPublic) {
+    const integrationSecrets = readEnvFile([
+      'PARALLEL_API_KEY',
+      'TODOIST_API_TOKEN',
+      'APIFY_TOKEN',
+      'OPENROUTER_API_KEY',
+      'ZERNIO_API_KEY',
+      'COMPOSIO_API_KEY',
+      'TELEGRAM_SCANNER_PORT',
+    ]);
+    if (integrationSecrets.PARALLEL_API_KEY) {
+      args.push(
+        '-e',
+        `PARALLEL_API_KEY=${integrationSecrets.PARALLEL_API_KEY}`,
+      );
+    }
+    if (integrationSecrets.TODOIST_API_TOKEN) {
+      args.push(
+        '-e',
+        `TODOIST_API_TOKEN=${integrationSecrets.TODOIST_API_TOKEN}`,
+      );
+    }
+    if (integrationSecrets.APIFY_TOKEN) {
+      args.push('-e', `APIFY_TOKEN=${integrationSecrets.APIFY_TOKEN}`);
+    }
+    if (integrationSecrets.OPENROUTER_API_KEY) {
+      args.push(
+        '-e',
+        `OPENROUTER_API_KEY=${integrationSecrets.OPENROUTER_API_KEY}`,
+      );
+    }
+    if (integrationSecrets.ZERNIO_API_KEY) {
+      args.push('-e', `ZERNIO_API_KEY=${integrationSecrets.ZERNIO_API_KEY}`);
+    }
+    if (integrationSecrets.COMPOSIO_API_KEY) {
+      args.push(
+        '-e',
+        `COMPOSIO_API_KEY=${integrationSecrets.COMPOSIO_API_KEY}`,
+      );
+    }
+    if (integrationSecrets.TELEGRAM_SCANNER_PORT) {
+      args.push(
+        '-e',
+        `TELEGRAM_SCANNER_PORT=${integrationSecrets.TELEGRAM_SCANNER_PORT}`,
+      );
+    }
   }
 
   // Runtime-specific args for host gateway resolution
@@ -394,7 +446,7 @@ export async function runContainerAgent(
   const mounts = buildVolumeMounts(group, input.isMain);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
-  const containerArgs = buildContainerArgs(mounts, containerName, input.isMain);
+  const containerArgs = buildContainerArgs(mounts, containerName, input.isMain, group.isPublic === true);
 
   logger.debug(
     {

@@ -39,8 +39,8 @@ Use `--profile <path>` with a path on the mounted group volume. This creates a p
 mkdir -p /workspace/group/browser-profiles/telegram-ads
 
 # Open with persistent profile
-agent-browser --profile /workspace/group/browser-profiles/telegram-ads open "https://ads.telegram.org"
-agent-browser --profile /workspace/group/browser-profiles/telegram-ads snapshot -i
+agent-browser --session-name telegram-ads open "https://ads.telegram.org"
+agent-browser --session-name telegram-ads snapshot -i
 
 # First time: click login, enter phone, user sends code via Telegram, enter code
 # Subsequent runs: already logged in, profile has the session
@@ -56,8 +56,8 @@ agent-browser --profile /workspace/group/browser-profiles/telegram-ads snapshot 
 Just use the same `--profile` flag — session restored automatically:
 
 ```bash
-agent-browser --profile /workspace/group/browser-profiles/telegram-ads open "https://ads.telegram.org"
-agent-browser --profile /workspace/group/browser-profiles/telegram-ads snapshot -i
+agent-browser --session-name telegram-ads open "https://ads.telegram.org"
+agent-browser --session-name telegram-ads snapshot -i
 # Dashboard should appear immediately
 ```
 
@@ -192,12 +192,13 @@ After submission, campaigns go through Telegram's moderation (24-48h).
 ### Manual check
 
 ```bash
-agent-browser load-state /workspace/group/telegram-ads-auth.json
-agent-browser open "https://ads.telegram.org"
-agent-browser snapshot -i
+agent-browser --session-name telegram-ads open "https://ads.telegram.org"
+agent-browser --session-name telegram-ads snapshot -i
 # Navigate to campaigns list
 # Check status: Pending / Approved / Rejected
 ```
+
+If snapshot shows login form instead of dashboard → invoke `telegram-ads-auth` skill.
 
 ### Report status
 
@@ -218,10 +219,9 @@ If rejected:
 After campaign runs for 48-72 hours:
 
 ```bash
-agent-browser load-state /workspace/group/telegram-ads-auth.json
-agent-browser open "https://ads.telegram.org"
+agent-browser --session-name telegram-ads open "https://ads.telegram.org"
 # Navigate to campaign analytics
-agent-browser snapshot  # Screenshot analytics page
+agent-browser --session-name telegram-ads snapshot  # Screenshot analytics page
 ```
 
 Extract and report:
@@ -292,7 +292,8 @@ context_mode: group
 ## Troubleshooting
 
 - **Login fails**: Telegram may require fresh code. Ask user to check Telegram for login code.
-- **Session expired**: Delete `telegram-ads-auth.json`, re-login from scratch.
+- **Session expired**: Run `telegram-ads-auth` skill. If profile itself is corrupted, `rm -rf /workspace/group/browser-profiles/telegram-ads && mkdir -p /workspace/group/browser-profiles/telegram-ads`, then re-auth.
 - **Campaign rejected**: Read reason carefully. Common: text too long, misleading claims, wrong language.
 - **Low impressions**: Increase CPM bid (try 0.2-0.5 TON), broaden targeting.
 - **High spend low clicks**: Pause, review creative relevance to placement audience.
+- **Mila repeatedly says "session expired"**: Check `/workspace/group/store/telegram-ads-session.json`. If `consecutive_failures > 3` but profile dir has recent mtime, something else is broken (likely chromium version drift or host path not mounted). Ping Shakhruz.

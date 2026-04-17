@@ -13,6 +13,8 @@ logs/
 groups/*
 !groups/main/
 !groups/global/
+!groups/_public-lead/
+!groups/_shared-products/
 groups/main/*
 groups/global/*
 !groups/main/CLAUDE.md
