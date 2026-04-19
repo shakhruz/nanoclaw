@@ -173,7 +173,76 @@ agent-browser snapshot
 # Save to /workspace/group/telegram-ads/<client>/preview-<targeting>-<date>.png
 ```
 
-### Step 5: Submit
+### Step 5: Pre-submission compliance check (MANDATORY)
+
+**Before clicking Submit — run the compliance checklist from `telegram-ads` skill.**
+
+Critical pre-flight checks:
+
+```bash
+# 1. Ad text checks
+AD_TEXT="<the text user is about to submit>"
+echo "$AD_TEXT" | python3 -c '
+import sys, re
+text = sys.stdin.read().strip()
+issues = []
+if len(text) > 160: issues.append(f"Too long: {len(text)}/160 chars")
+# Personal questions (5.4 violation — this killed our 2026-04-18 ad)
+if re.search(r"(Как|Хочешь|Любишь|Нужн[оа])\s+(ты|вы|вам|тебе|вас)?.*\?", text, re.IGNORECASE):
+    issues.append("Personal question detected (5.4 violation)")
+# Profession/status targeting
+for pattern in [r"для\s+предпринимател", r"для\s+мам", r"для\s+начинающ", r"для\s+всех\s+кто", r"если\s+ты", r"тво[йиея]"]:
+    if re.search(pattern, text, re.IGNORECASE):
+        issues.append(f"Personal targeting detected: /{pattern}/")
+# Get-rich-quick
+for word in ["заработай", "заработок", "$5000", "$10000", "пассивный доход", "легкие деньги"]:
+    if word.lower() in text.lower():
+        issues.append(f"Income claim: {word}")
+# Absolute claims
+for word in ["лучший", "лучшая", "самый", "самая", "№1", "гарантируем", "гарантия"]:
+    if word.lower() in text.lower():
+        issues.append(f"Absolute claim: {word}")
+# Scare / urgency
+for word in ["не пропусти", "последний шанс", "срочно!", "только сегодня"]:
+    if word.lower() in text.lower():
+        issues.append(f"Scare tactic: {word}")
+# Caps abuse (>2 caps-only words)
+caps_words = [w for w in text.split() if len(w) > 2 and w.isupper() and w.upper() != w.lower()]
+if len(caps_words) > 2:
+    issues.append(f"Too many all-caps words: {caps_words}")
+# Excessive punctuation
+if re.search(r"[!?]{2,}", text):
+    issues.append("Excessive punctuation (!!! / ???)")
+# Emoji count
+emoji_count = len(re.findall(r"[\U0001F300-\U0001FAFF\U0001F000-\U0001F02F]", text))
+if emoji_count > 2:
+    issues.append(f"Too many emoji: {emoji_count}")
+
+if issues:
+    print("❌ COMPLIANCE ISSUES:")
+    for i in issues: print(f"  - {i}")
+    print("\\nFix before submitting. See telegram-ads skill Phase 5 for rewrites.")
+    sys.exit(1)
+else:
+    print("✅ Ad text passes automated checks")
+'
+
+# 2. Destination check (bot)
+BOT_URL="$URL_TO_PROMOTE"  # e.g., t.me/ashotaiuz_bot
+if [[ "$BOT_URL" =~ t\.me/.*_bot$ ]]; then
+  BOT_NAME=$(echo "$BOT_URL" | sed 's|.*/||')
+  echo "⚠️ Bot destination: verify manually:"
+  echo "  [ ] Profile image set (not default)"
+  echo "  [ ] /about has ≥2 sentences"
+  echo "  [ ] /start shows menu (not just a redirect URL)"
+  echo "  [ ] ≥3 meaningful commands/buttons"
+  echo "  Test: t.me/$BOT_NAME — open in Telegram, verify."
+fi
+```
+
+If ANY issues — pause and fix before submitting. Telegram moderation is 24-48h per rejection, each round of changes delays launch.
+
+### Step 6: Submit
 
 ```bash
 # Scroll to bottom if needed

@@ -281,24 +281,131 @@ For story format (9:16), adjust scale to 1080:1920.
 
 ## Phase 5: Compliance Review
 
+**Full policy reference:** https://ads.telegram.org/guidelines
+
+### Past rejections (learn from these)
+
+**2026-04-18 — "Воркшоп: продажи с AI" → REJECTED (destination)**
+- Text: "Как продавать с помощью AI? Воркшоп для предпринимателей — разбор инструментов. Смотреть бесплатно."
+- Destination: `t.me/ashotaiuz_bot`
+- **Why:**
+  - Personal question "Как продавать с помощью AI?" (5.4 — highlighting personal characteristics / asking personal questions about financial/business status)
+  - "для предпринимателей" — targeting by professional status (same clause)
+  - Bot that mostly redirects to funnel (ashotai.uz) — 4.3 "Mostly noninteractive bots designed to redirect elsewhere"
+  - Possibly bot profile incomplete (4.1)
+
+### Destination requirements (CRITICAL — most common rejection cause)
+
+For **bot destinations** (`t.me/<bot>`):
+- **Must have profile image** (not default)
+- **Must have complete /about or description** (what the bot does, what value it provides)
+- **Must respond to commands meaningfully** — not just send a single redirect link
+- **Must provide user experience inside Telegram** — not be a thin wrapper that dumps a URL
+- Bots that immediately redirect to an external funnel fail 4.3
+
+**If advertising a bot:** make sure the bot has real content — FAQ, menu with options, multiple conversation branches. Link to funnel should be ONE option among several, not the whole bot.
+
+For **channel destinations** (`t.me/<channel>`):
+- Must have profile image AND description
+- Must have had activity in the last 2 weeks
+- Language must match the ad language
+
+For **website destinations** (`https://...`):
+- Must load from targeted countries
+- No paywall/login block
+- No auto-redirect (302, .htaccess) to a different domain
+
+### Prohibited ad-text patterns (with rewrites)
+
+| ❌ REJECTED pattern | Why | ✅ APPROVED rewrite |
+|---|---|---|
+| "Как продавать с помощью AI?" | 5.4 personal question | "AI-инструменты для продаж. Разбор на воркшопе." |
+| "для предпринимателей" | 5.4 targeting by status | "Воркшоп по AI-автоматизации" |
+| "для всех кто хочет заработать" | 5.4 targeting financial status | "Обучение работе с AI" |
+| "Смотри что скрывают эксперты" | 5.4 clickbait / scare tactic | "Разбор инструментов от практика" |
+| "Заработай $5000/мес" | 5.7 get-rich-quick | "Тарифы от $200/мес в описании" |
+| "Гарантируем результат" | 5.4 absolute claim / 5.7 investment guarantee | "Практика на реальных кейсах" |
+| "Лучший в СНГ курс" | 5.4 unsupported superlative | "Образовательная программа по AI" |
+| "Не пропусти!" | 5.4 scare tactic | (just remove — let the value speak) |
+| "ЖМИ!" / "!!!" / "🔥🔥🔥" | 2. editorial — excessive caps/punctuation/emoji | Calm, neutral tone |
+| "Ты хочешь...?" | 5.4 addressing "you" with a personal question | "Обучение ...", "Программа..." |
+
+### Pre-submission validator (run BEFORE uploading to ads.telegram.org)
+
 ```
-TELEGRAM ADS CHECKLIST:
-[ ] Ad text ≤ 160 characters
-[ ] CTA button text ≤ 30 characters
-[ ] No ALL CAPS entire text
-[ ] No excessive punctuation
+TELEGRAM ADS CHECKLIST v2 (post-2026-04-18 rejection):
+
+— AD TEXT —
+[ ] ≤ 160 characters
+[ ] No personal questions ("Как ты...?", "Хочешь...?", "Любишь...?")
+[ ] No targeting by profession/status ("для предпринимателей", "для мам", "для начинающих")
+[ ] No absolute claims ("лучший", "самый", "№1", "гарантия")
+[ ] No income/get-rich claims ("заработай", "$X в месяц", "от $X")
+[ ] No scare/urgency ("не пропусти", "последний шанс", "пока не поздно")
+[ ] No "бесплатно" as the main hook (ok if factual: "доступ бесплатный")
+[ ] No ALL CAPS words (except well-known acronyms: AI, CRM, API)
 [ ] Max 1-2 emoji
-[ ] No phone numbers in text
-[ ] No misleading claims
-[ ] No prohibited content (drugs, weapons, adult, gambling)
+[ ] No phone numbers
+[ ] No double spaces / letter-spaced words (s p a c e d)
+[ ] Proper punctuation (no "!!!" or "????")
+
+— DESTINATION (bot) —
+[ ] Bot has profile image (not default silhouette)
+[ ] Bot /about filled with 2-3 sentences explaining what it does
+[ ] Bot responds to /start with a menu of options, not just a link
+[ ] Bot has 3+ meaningful commands/branches (not just redirect)
+[ ] Bot is functional on mobile + desktop
+
+— DESTINATION (channel) —
+[ ] Channel has profile image
+[ ] Channel has description (1-3 sentences)
+[ ] Channel has ≥1 post in last 14 days
+[ ] Channel post language matches ad language
+[ ] Channel is NOT abandoned (posts > 30 days old → reject risk)
+
+— DESTINATION (website) —
+[ ] Loads in target countries (test with VPN)
+[ ] No paywall / no login required
+[ ] No 302 redirect to different domain
+[ ] HTTPS only
+[ ] Loads in < 5s
+
+— CREATIVE (image/video) —
 [ ] Image text ≤ 20% area
-[ ] Image works on dark + light theme
-[ ] Video ≤ 15 seconds
+[ ] No fake buttons / UI mimicry
+[ ] No before/after miracle transformation
+[ ] No stock photos of people that might imply personal targeting
+[ ] Video ≤ 15s (sponsored) / full-screen (story)
 [ ] Video file ≤ 10MB (sponsored) / 30MB (story)
-[ ] Hook in first 2 seconds of video
-[ ] Language matches target audience
-[ ] Destination URL/bot/channel is valid
+[ ] Hook in first 2 seconds
+
+— TARGETING —
+[ ] Language of ad matches language of target channels
+[ ] Channel categories align with product (no "любое чтобы охват был больше")
 ```
+
+### How to fix the 2026-04-18 rejection
+
+Before resubmitting, do ALL of these:
+
+1. **Rewrite ad text** — remove personal question + profession targeting:
+   ```
+   Before: "Как продавать с помощью AI? Воркшоп для предпринимателей — разбор инструментов. Смотреть бесплатно."
+   After:  "Практический воркшоп по AI-инструментам. Разбор задач малого бизнеса. Запись доступна в боте."
+   ```
+
+2. **Fix bot destination** (`@ashotaiuz_bot`):
+   - Set profile image (NanoClaw logo or Ashot's photo)
+   - Fill /about: "AI-ассистент AshotAI. Воркшопы, разборы инструментов, запись эфиров."
+   - Add /start menu with 3-5 buttons: Воркшоп | Последний эфир | Тарифы | Связаться | FAQ
+   - Ensure each button leads to internal bot content (not just external URL)
+
+3. **Alternative — switch destination to `@ashotonline`** (channel):
+   - Channel has activity (daily posts now, AI news digest)
+   - Has profile image and description
+   - Lower rejection risk than bot
+
+4. Resubmit via ads.telegram.org "Send to Review" button.
 
 ## Phase 6: Save & Deliver
 
