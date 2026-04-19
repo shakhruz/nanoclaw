@@ -27,6 +27,7 @@ export interface TelegramChannelOpts {
     userName: string,
     userId?: number,
     languageCode?: string,
+    deepLink?: string,
   ) => void;
 }
 
@@ -253,7 +254,7 @@ export class TelegramChannel implements Channel {
       const payload = ctx.match; // deep link parameter (?start=uz, ?start=expert etc.)
 
       const messages: Record<string, string> = {
-        uz: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота, эксперта по ИИ для бизнеса. Могу бесплатно проанализировать ваш бизнес и показать как ИИ поможет привлекать клиентов. Секунду...`,
+        uz: `Salom! Men ${ASSISTANT_NAME} — Shahruz Ashot Ashirovning AI-yordamchisiman. Biznesingizni bepul tahlil qilib, AI qanday mijozlarni jalb qilishga yordam berishini ko'rsataman. Bir soniya...`,
         expert: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота. Поможем упаковать вашу экспертизу в онлайн-курс с помощью ИИ. Секунду...`,
         business: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота, эксперта по ИИ для бизнеса. Могу бесплатно проанализировать ваш бизнес и подсказать точки роста. Секунду...`,
         startup: `Привет! Я ${ASSISTANT_NAME} — ассистент Шахруза Ашота. Покажем как запустить AI-воронку продаж для вашего стартапа. Секунду...`,
@@ -283,6 +284,7 @@ export class TelegramChannel implements Channel {
           senderName,
           ctx.from?.id,
           ctx.from?.language_code,
+          payload || undefined,
         );
 
         // Store the /start as the first message so the agent sees it

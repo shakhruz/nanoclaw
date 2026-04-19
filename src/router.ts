@@ -1,5 +1,6 @@
 import { Channel, NewMessage } from './types.js';
 import { formatLocalTime } from './timezone.js';
+import { storeMessageDirect } from './db.js';
 
 export function escapeXml(s: string): string {
   if (!s) return '';
@@ -49,7 +50,24 @@ export function routeOutbound(
 ): Promise<void> {
   const channel = channels.find((c) => c.ownsJid(jid) && c.isConnected());
   if (!channel) throw new Error(`No channel for JID: ${jid}`);
-  return channel.sendMessage(jid, text);
+  return channel.sendMessage(jid, text).then(() => {
+    // Persist outbound message so admin panel + future audits can see it.
+    // is_from_me=true marks "sent by our bot/agent" (Mila / main).
+    try {
+      storeMessageDirect({
+        id: `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        chat_jid: jid,
+        sender: 'bot',
+        sender_name: 'Mila',
+        content: text,
+        timestamp: new Date().toISOString(),
+        is_from_me: true,
+        is_bot_message: true,
+      });
+    } catch {
+      // DB error shouldn't break message delivery
+    }
+  });
 }
 
 export function findChannel(

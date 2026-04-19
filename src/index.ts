@@ -50,6 +50,7 @@ import {
   setSession,
   storeChatMetadata,
   storeMessage,
+  storeMessageDirect,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
@@ -88,6 +89,30 @@ let autoRegHistory: number[] = []; // timestamps for rate limiting auto-registra
 
 const channels: Channel[] = [];
 const queue = new GroupQueue();
+
+// Send a message AND persist it to messages.db so admin-panel sees full dialog.
+// Use everywhere Mila/main sends something to a user chat.
+async function sendAndPersist(
+  channel: Channel,
+  jid: string,
+  text: string,
+): Promise<void> {
+  await channel.sendMessage(jid, text);
+  try {
+    storeMessageDirect({
+      id: `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      chat_jid: jid,
+      sender: 'bot',
+      sender_name: 'Mila',
+      content: text,
+      timestamp: new Date().toISOString(),
+      is_from_me: true,
+      is_bot_message: true,
+    });
+  } catch {
+    // swallow — delivery already happened
+  }
+}
 
 const onecli = new OneCLI({ url: ONECLI_URL });
 
@@ -259,7 +284,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     triggerPattern: getTriggerPattern(group.trigger),
     timezone: TIMEZONE,
     deps: {
-      sendMessage: (text) => channel.sendMessage(chatJid, text),
+      sendMessage: (text) => sendAndPersist(channel, chatJid, text),
       setTyping: (typing) =>
         channel.setTyping?.(chatJid, typing) ?? Promise.resolve(),
       runAgent: (prompt, onOutput) =>
@@ -345,7 +370,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
       if (text) {
-        await channel.sendMessage(chatJid, text);
+        await sendAndPersist(channel, chatJid, text);
         outputSentToUser = true;
       }
       // Only reset idle timer on actual results, not session-update markers (result: null)
@@ -710,9 +735,10 @@ async function main(): Promise<void> {
         process.cwd(),
       );
       if (result.ok) {
-        await channel.sendMessage(chatJid, result.url);
+        await sendAndPersist(channel, chatJid, result.url);
       } else {
-        await channel.sendMessage(
+        await sendAndPersist(
+          channel,
           chatJid,
           `Remote Control failed: ${result.error}`,
         );
@@ -720,9 +746,9 @@ async function main(): Promise<void> {
     } else {
       const result = stopRemoteControl();
       if (result.ok) {
-        await channel.sendMessage(chatJid, 'Remote Control session ended.');
+        await sendAndPersist(channel, chatJid, 'Remote Control session ended.');
       } else {
-        await channel.sendMessage(chatJid, result.error);
+        await sendAndPersist(channel, chatJid, result.error);
       }
     }
   }
@@ -772,6 +798,7 @@ async function main(): Promise<void> {
       userName: string,
       userId?: number,
       languageCode?: string,
+      deepLink?: string,
     ) => {
       if (registeredGroups[chatJid]) return; // already registered
 
@@ -799,9 +826,31 @@ async function main(): Promise<void> {
         chatJid,
         'start',
         null,
-        JSON.stringify({ userName, languageCode }),
+        JSON.stringify({ userName, languageCode, deepLink }),
       );
-      logger.info({ chatJid, folder, userName }, 'Auto-registered public lead');
+      logger.info(
+        { chatJid, folder, userName, deepLink },
+        'Auto-registered public lead',
+      );
+
+      // Notify main group (Shakhruz) about new lead with funnel context
+      const mainGroup = Object.values(registeredGroups).find((g) => g.isMain);
+      if (mainGroup) {
+        const mainJid = Object.keys(registeredGroups).find(
+          (jid) => registeredGroups[jid] === mainGroup,
+        );
+        if (mainJid) {
+          const funnel = deepLink ? `?start=${deepLink}` : '(прямой вход)';
+          const langLabel = languageCode ? ` lang=${languageCode}` : '';
+          const notification = `🆕 Новый лид в воронке\n\n*Имя:* ${userName}\n*Воронка:* ${funnel}${langLabel}\n*Chat:* ${chatJid}\n*Folder:* ${folder}`;
+          const channel = channels.find((c) => c.ownsJid(mainJid));
+          if (channel) {
+            sendAndPersist(channel, mainJid, notification).catch((err) => {
+              logger.error({ err }, 'Failed to notify main about new lead');
+            });
+          }
+        }
+      }
     },
   };
 
@@ -840,14 +889,14 @@ async function main(): Promise<void> {
         return;
       }
       const text = formatOutbound(rawText);
-      if (text) await channel.sendMessage(jid, text);
+      if (text) await sendAndPersist(channel, jid, text);
     },
   });
   startIpcWatcher({
     sendMessage: (jid, text) => {
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
-      return channel.sendMessage(jid, text);
+      return sendAndPersist(channel, jid, text);
     },
     reactToMessage: async (jid, messageId, emoji) => {
       const channel = findChannel(channels, jid);
