@@ -40,6 +40,9 @@ Extract profile ID and account IDs per platform for posting.
 
 ### Phase 2: Create & Publish Post
 
+**IMPORTANT:** `platforms` must be an array of objects `{platform, accountId}`, not strings.
+Get account IDs from Phase 1. `mediaItems` replaces `mediaUrls` — each item is `{type, url, filename, mimeType, size}`.
+
 **Immediate publish:**
 ```bash
 curl -s -X POST "https://zernio.com/api/v1/posts" \
@@ -48,7 +51,11 @@ curl -s -X POST "https://zernio.com/api/v1/posts" \
   -d '{
     "profileId": "<PROFILE_ID>",
     "text": "<POST_TEXT>",
-    "platforms": ["youtube", "instagram", "facebook", "linkedin", "twitter"],
+    "platforms": [
+      {"platform": "youtube", "accountId": "<YT_ID>"},
+      {"platform": "instagram", "accountId": "<IG_ID>"},
+      {"platform": "facebook", "accountId": "<FB_ID>"}
+    ],
     "publishNow": true
   }'
 ```
@@ -61,32 +68,36 @@ curl -s -X POST "https://zernio.com/api/v1/posts" \
   -d '{
     "profileId": "<PROFILE_ID>",
     "text": "<POST_TEXT>",
-    "platforms": ["youtube", "instagram"],
+    "platforms": [{"platform": "instagram", "accountId": "<IG_ID>"}],
     "scheduledFor": "2026-04-15T09:00:00.000Z"
   }'
 ```
 
 **With media (image/video):**
 ```bash
-# Step 1: Get presigned upload URL
-UPLOAD=$(curl -s "https://zernio.com/api/v1/media/upload?size=<BYTES>" \
-  -H "Authorization: Bearer $ZERNIO_API_KEY")
-# Extract uploadUrl and fileUrl from response
+# Step 1: Get presigned upload URL via POST /v1/media/presign
+PRESIGN=$(curl -s -X POST "https://zernio.com/api/v1/media/presign" \
+  -H "Authorization: Bearer $ZERNIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"<NAME>","contentType":"<MIME>","size":<BYTES>}')
+# Response: { "uploadUrl": "<presigned PUT URL>", "publicUrl": "<CDN URL>", "expiresIn": 3600 }
 
-# Step 2: Upload file to presigned URL
-curl -s -X PUT "<uploadUrl>" \
+# Step 2: Upload file to presigned URL (no auth needed)
+curl -s -X PUT "$(echo $PRESIGN | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).uploadUrl)")" \
   -H "Content-Type: <mime-type>" \
   --data-binary @<FILE>
 
 # Step 3: Create post with media
+# platforms = array of {platform, accountId} objects (get accountId from /v1/accounts)
+# mediaItems = array of {type, url, filename, mimeType, size} objects
 curl -s -X POST "https://zernio.com/api/v1/posts" \
   -H "Authorization: Bearer $ZERNIO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "profileId": "<PROFILE_ID>",
     "text": "<POST_TEXT>",
-    "platforms": ["instagram", "facebook"],
-    "mediaUrls": ["<fileUrl>"],
+    "platforms": [{"platform": "instagram", "accountId": "<IG_ID>"}],
+    "mediaItems": [{"type": "image", "url": "<publicUrl>", "filename": "<NAME>", "mimeType": "<MIME>"}],
     "publishNow": true
   }'
 ```

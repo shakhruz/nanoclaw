@@ -6,7 +6,7 @@ FROM node:22-slim
 # Chromium version pin — see explanation below
 # Override at build: ./container/build.sh --build-arg CHROMIUM_VERSION=<version>
 # Empty value means "latest available" (drift risk — see below)
-ARG CHROMIUM_VERSION=147.0.7727.55-1~deb12u1
+ARG CHROMIUM_VERSION=147.0.7727.101-1~deb12u1
 
 # Why pin: telegram-ads session is tied to browser fingerprint. If chromium
 # version drifts on rebuild, ads.telegram.org sees a "new device" and forces
@@ -44,8 +44,16 @@ RUN apt-get update && \
     tesseract-ocr \
     tesseract-ocr-rus \
     tesseract-ocr-eng \
+    ffmpeg \
+    python3 \
+    python3-pip \
+    python3-pil \
     && apt-mark hold chromium \
     && rm -rf /var/lib/apt/lists/*
+
+# Install rembg for logo/background removal (thumbnail generation)
+# --break-system-packages needed for Debian 12 PEP 668
+RUN pip3 install --break-system-packages --no-cache-dir rembg[cpu] onnxruntime numpy
 
 # Set Chromium path for agent-browser
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
