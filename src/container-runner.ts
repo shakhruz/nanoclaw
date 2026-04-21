@@ -206,6 +206,38 @@ function buildVolumeMounts(
   // --session-name instead, which works correctly when this dir is mounted.
   const agentBrowserSessionsDir = path.join(groupDir, 'agent-browser-sessions');
   fs.mkdirSync(agentBrowserSessionsDir, { recursive: true });
+
+  // Sync canonical sessions from main — so re-auth done by Shakhruz in main
+  // propagates to all dependent groups (channel-promoter, youtube-manager,
+  // partner-recruitment, client-profiler). Main is the canonical source of
+  // truth for browser sessions; other groups inherit on each spawn.
+  // Only syncs files newer in main than in the dependent group.
+  if (!group.isMain && !group.isPublic) {
+    const mainSessionsDir = path.join(
+      process.cwd(),
+      'groups',
+      'telegram_main',
+      'agent-browser-sessions',
+    );
+    if (fs.existsSync(mainSessionsDir)) {
+      try {
+        for (const f of fs.readdirSync(mainSessionsDir)) {
+          if (!f.endsWith('.json')) continue;
+          const src = path.join(mainSessionsDir, f);
+          const dst = path.join(agentBrowserSessionsDir, f);
+          const srcStat = fs.statSync(src);
+          const dstExists = fs.existsSync(dst);
+          const dstMtime = dstExists ? fs.statSync(dst).mtimeMs : 0;
+          if (srcStat.mtimeMs > dstMtime) {
+            fs.copyFileSync(src, dst);
+          }
+        }
+      } catch {
+        // Don't fail container spawn if sync has an error
+      }
+    }
+  }
+
   mounts.push({
     hostPath: agentBrowserSessionsDir,
     containerPath: '/home/node/.agent-browser/sessions',
