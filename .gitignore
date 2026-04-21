@@ -27,6 +27,9 @@ groups/global/*
 # Temp files
 .tmp-*
 
+# Skill backup artifacts (created by /add-second-brain upgrade mode etc.)
+*.backup-*.md
+
 # OS
 .DS_Store
 
