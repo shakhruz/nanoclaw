@@ -298,6 +298,27 @@ Also works for videos not published through Zernio — use `_` as postId + pass 
 
 Every published video MUST be ingested into the wiki so it can be recommended to clients, referenced in content plans, and searched later.
 
+**Two destinations must be synced — both mandatory, both via main agent (curator):**
+
+| Destination | Used by | What goes there |
+|---|---|---|
+| `/workspace/global/wiki/sources/<date>-yt-<slug>.md` | main, channel-promoter, youtube-manager (read) | Full transcript + source-summary frontmatter + entity/concept back-refs |
+| `/workspace/global/wiki/entities/ashotai-youtube.md` | same | Video row in the channel catalog (title, URL, views, duration, date) |
+| **`groups/_shared-products/videos.md`** | **public-lead Мила** via `/workspace/products` readonly mount | Curated client-facing entry with funnel stage + "Рекомендуй когда..." trigger. This is the ONLY place public-lead can read from — if it's missing, Мила can't reference the video in client chats. |
+
+**Why `_shared-products/videos.md` matters:** public-lead containers have `isPublic=true` → they get only `/workspace/products` (read-only) as their shared surface, NOT `/workspace/global`. Skipping this sync means the video is invisible to Мила when talking to leads from Telegram Ads.
+
+**Funnel-stage classification (required for videos.md entry):**
+
+| Stage | Use for | Example trigger |
+|---|---|---|
+| Cold | awareness content, pain identification | "лид не понимает с чего начать" |
+| Qualifying | clarifying intent | "лид думает что нужна большая аудитория" |
+| Interested | how-to / demo | "хочет увидеть как работает OctoFunnel" |
+| Hot | decision support / pricing | "серьёзно рассматривает, нужен roadmap" |
+| Education | deep dives / recordings | "хочет увидеть изнутри", "полный разбор" |
+| Partner | B2B for resellers/agencies | "делает SMM/таргет для других" |
+
 Delegate to main Mila via a scheduled once-task (she is the wiki curator — per global/CLAUDE.md rule):
 
 ```bash
