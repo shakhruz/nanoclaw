@@ -273,11 +273,21 @@ function buildVolumeMounts(
   const agentBrowserSessionsDir = path.join(groupDir, 'agent-browser-sessions');
   fs.mkdirSync(agentBrowserSessionsDir, { recursive: true });
 
-  // Sync canonical sessions from main — so re-auth done by Shakhruz in main
-  // propagates to all dependent groups (channel-promoter, youtube-manager,
-  // partner-recruitment, client-profiler). Main is the canonical source of
-  // truth for browser sessions; other groups inherit on each spawn.
-  // Only syncs files newer in main than in the dependent group.
+  // Sync canonical sessions from main — main is the sole source of truth for
+  // browser cookies. Non-main groups get a fresh copy on EVERY spawn,
+  // overwriting any local modifications from the previous session.
+  //
+  // Why always overwrite (not just mtime-newer):
+  //   When a MILA container opens ads.telegram.org, Telegram may re-set
+  //   `stel_ssid` without Max-Age (as a session cookie), which Chrome
+  //   downgrades from persistent to session — `expires: -1, session: true`.
+  //   agent-browser then writes this broken state back to disk. With
+  //   mtime-based sync, the broken local version would win over main's
+  //   persistent version on subsequent spawns. Force-overwrite means any
+  //   local corruption gets reset by the next spawn.
+  //
+  // Keepalive/re-auth flows run only in main, so there's nothing of value
+  // to preserve in MILA's local copy.
   if (!group.isMain && !group.isPublic) {
     const mainSessionsDir = path.join(
       process.cwd(),
@@ -291,12 +301,7 @@ function buildVolumeMounts(
           if (!f.endsWith('.json')) continue;
           const src = path.join(mainSessionsDir, f);
           const dst = path.join(agentBrowserSessionsDir, f);
-          const srcStat = fs.statSync(src);
-          const dstExists = fs.existsSync(dst);
-          const dstMtime = dstExists ? fs.statSync(dst).mtimeMs : 0;
-          if (srcStat.mtimeMs > dstMtime) {
-            fs.copyFileSync(src, dst);
-          }
+          fs.copyFileSync(src, dst);
         }
       } catch {
         // Don't fail container spawn if sync has an error

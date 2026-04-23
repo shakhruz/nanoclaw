@@ -97,6 +97,31 @@ Writable from main + all MILA groups (channel-promoter, partner-recruitment, cli
 
 **Never** send `⚠️ сессия истекла` based on `check-session.sh` alone — always live-probe first. Cookie-file writes aren't atomic (even with our `mv` dance) and can briefly look empty during another container's shutdown.
 
+## Если cookie повреждён, но в main живой (MILA-группы)
+
+Если ты работаешь в MILA-группе (channel-promoter, partner-recruitment, client-profiler, youtube-manager), и видишь, что `telegram-ads-default.json` содержит:
+- `stel_ssid.expires == -1.0` **или** `stel_ssid.session == true`,
+
+— это **НЕ истечение сессии**. Это race-condition: твой agent-browser открыл `ads.telegram.org`, Telegram переотправил cookie без `Max-Age`, Chrome понизил его до session-cookie, agent-browser перезаписал файл.
+
+В main-группе cookie остаётся живым (expires далеко в будущем, session=false). Поэтому правильная реакция:
+
+1. **НЕ шли ⚠️-алерт.**
+2. **НЕ проси `/telegram-ads-auth`.**
+3. **Отправь сообщение в main через `mcp__nanoclaw__send_message`:**
+   ```
+   Cookie в MILA-<твоя-группа> сломан (session=-1). Нужен rebuild контейнера
+   чтобы пересинкать из main. Запустишь `launchctl kickstart -k gui/$(id -u)/com.nanoclaw`?
+   ```
+4. Main-сессия жива — restart контейнера → sync main→MILA перезапишет повреждённый файл (non-main всегда получает свежий cookie при spawn, начиная с container-runner 2026-04-23).
+
+Проверка, что ты в корректном состоянии:
+```bash
+jq '.cookies[] | select(.name=="stel_ssid") | {expires, session}' \
+  /home/node/.agent-browser/sessions/telegram-ads-default.json
+```
+Ожидаемо: `{"expires": <big-number-~1808220032>, "session": false}`.
+
 ## For schedule-based tasks
 
 Any cron prompt that checks session status MUST:
