@@ -706,6 +706,73 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const sender = ctx.from?.id.toString() ?? '';
 
+      // admin-ipc callbacks: `admin:<approve|deny>:<req-id>` — write decision
+      // file to groups/global/admin-ipc/decisions/ for mila-admin (Claude Code)
+      // to pick up; don't forward to onMessage (main agent shouldn't handle).
+      if (data.startsWith('admin:')) {
+        const [, decision, reqId] = data.split(':');
+        if (
+          reqId &&
+          (decision === 'approve' || decision === 'deny') &&
+          /^req-[a-z0-9-]+$/i.test(reqId)
+        ) {
+          try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const decisionsDir = path.join(
+              process.cwd(),
+              'groups',
+              'global',
+              'admin-ipc',
+              'decisions',
+            );
+            fs.mkdirSync(decisionsDir, { recursive: true });
+            const decisionFile = path.join(decisionsDir, `${reqId}.json`);
+            fs.writeFileSync(
+              decisionFile,
+              JSON.stringify(
+                {
+                  request_id: reqId,
+                  decision,
+                  decided_by: sender,
+                  decided_by_name: senderName,
+                  decided_at: timestamp,
+                  via: 'telegram_inline_button',
+                  original_message_id: origMsgId,
+                },
+                null,
+                2,
+              ),
+            );
+            // edit the original message to reflect decision
+            const label = decision === 'approve' ? '✅ Одобрено' : '❌ Отказано';
+            try {
+              await ctx.editMessageReplyMarkup({
+                reply_markup: { inline_keyboard: [] },
+              });
+              await ctx.reply(`${label}: ${reqId}`, {
+                reply_parameters: { message_id: Number(origMsgId) },
+              });
+            } catch (err) {
+              logger.debug(
+                { err, reqId },
+                'Failed to edit admin-ipc decision message',
+              );
+            }
+            logger.info(
+              { reqId, decision, sender: senderName },
+              'admin-ipc decision recorded',
+            );
+          } catch (err) {
+            logger.error(
+              { err, reqId },
+              'Failed to write admin-ipc decision file',
+            );
+          }
+        }
+        return; // don't forward admin:* callbacks to onMessage
+      }
+
       const isGroup =
         ctx.chat?.type === 'group' || ctx.chat?.type === 'supergroup';
       this.opts.onChatMetadata(
