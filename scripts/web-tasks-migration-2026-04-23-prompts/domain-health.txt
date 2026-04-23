@@ -1,0 +1,34 @@
+Daily domain health check (cron 09:30 Tashkent).
+
+Цель — проверить что все наши кастом-домены отдают HTTP 200. Если хотя бы один лежит — предупредить в main.
+
+Алгоритм:
+
+1. Прочитай `/workspace/global/web-projects/inventory.json`, возьми `vercel_domains[]`.
+
+2. Для каждого домена:
+   ```bash
+   curl -sS -o /dev/null -w "%{http_code} %{time_total}\n" --max-time 8 "https://$d"
+   ```
+
+3. Агрегируй:
+   - 🟢 200/30x — OK
+   - 🟡 40x — клиентский код (может быть ожидаемо — 401 на закрытых страницах, пропусти если известно)
+   - 🔴 50x / timeout / DNS-fail — **проблема**
+
+4. Если все зелёные — **ничего не присылай** (тихо). Пользователю не нужны ежедневные "всё ок".
+
+5. Если ≥1 🔴 — пришли в main через `mcp__nanoclaw__send_message`:
+
+```
+🔴 *Web domains — проблема*
+• milagpt.cc → 503 (8s timeout)
+• farangismaster.com → DNS fail
+
+Полный список: все 19 доменов проверил, 2 лежат.
+Рекомендую: проверить Vercel deployment или DNS у регистратора.
+```
+
+6. Dedupe: не шли одно и то же сообщение второй раз в сутки. Используй `/workspace/global/web-projects/.last-health-alert.txt` (timestamp последнего alert'а) — если меньше 24h и список проблемных не изменился, пропусти.
+
+7. **Не пытайся чинить сам** — только уведомление.

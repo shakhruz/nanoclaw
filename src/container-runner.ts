@@ -194,6 +194,12 @@ function buildVolumeMounts(
   const TELEGRAM_ADS_BLOCKED_FOLDERS = new Set(['telegram_ashotai-experts']);
   const isTelegramAdsSkill = (name: string): boolean =>
     name === 'telegram-ads-session' || name.startsWith('telegram-ads');
+  // web-* skill suite manages public websites (Vercel + GitHub + ~/apps).
+  // Same gating as telegram-ads: MILA internal only, not exposed to the
+  // client-community group (ashotai-experts) or public leads.
+  const WEB_SKILLS_BLOCKED_FOLDERS = new Set(['telegram_ashotai-experts']);
+  const isWebSkill = (name: string): boolean =>
+    name === 'web' || name.startsWith('web-');
   // Wiki role split:
   //   main → full `wiki` skill (curator ops: ingest, lint, promote inbox)
   //   trusted non-main → `wiki-contributor` only (inbox + projects/<role>/)
@@ -209,14 +215,23 @@ function buildVolumeMounts(
       fs.rmSync(staleDir, { recursive: true, force: true });
     }
   }
-  // Evict telegram-ads-* from folders that shouldn't have it (e.g. if we
-  // previously synced and then added the folder to the blocklist).
-  if (
-    TELEGRAM_ADS_BLOCKED_FOLDERS.has(group.folder) &&
-    fs.existsSync(skillsDst)
-  ) {
+  // Evict telegram-ads-* and web-* from folders that shouldn't have them
+  // (e.g. if we previously synced and then added the folder to the blocklist).
+  if (fs.existsSync(skillsDst)) {
     for (const cached of fs.readdirSync(skillsDst)) {
-      if (isTelegramAdsSkill(cached)) {
+      if (
+        TELEGRAM_ADS_BLOCKED_FOLDERS.has(group.folder) &&
+        isTelegramAdsSkill(cached)
+      ) {
+        fs.rmSync(path.join(skillsDst, cached), {
+          recursive: true,
+          force: true,
+        });
+      }
+      if (
+        WEB_SKILLS_BLOCKED_FOLDERS.has(group.folder) &&
+        isWebSkill(cached)
+      ) {
         fs.rmSync(path.join(skillsDst, cached), {
           recursive: true,
           force: true,
@@ -232,6 +247,12 @@ function buildVolumeMounts(
       if (
         isTelegramAdsSkill(skillDir) &&
         TELEGRAM_ADS_BLOCKED_FOLDERS.has(group.folder)
+      ) {
+        continue;
+      }
+      if (
+        isWebSkill(skillDir) &&
+        WEB_SKILLS_BLOCKED_FOLDERS.has(group.folder)
       ) {
         continue;
       }
