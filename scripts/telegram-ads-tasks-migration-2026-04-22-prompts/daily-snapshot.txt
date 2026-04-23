@@ -1,0 +1,28 @@
+Daily Telegram Ads snapshot для трендового анализа (cron 23:30 ежедневно).
+
+Цель: сохранить копию cache.json в history/YYYY-MM-DD.json — потом telegram-ads-analyze читает эти снапшоты для подсчёта недельных/месячных дельт.
+
+HELP=/home/node/.claude/skills/telegram-ads-session
+. $HELP/common.sh
+
+# 1. Убедись, что cache свежий (<2 часов). Если стар — обнови через telegram-ads-view.
+UPDATED_AT=$(node -e "try{console.log(require(\"$TG_ADS_CACHE_FILE\").updated_at||\"\");}catch{console.log(\"\");}")
+if tg_ads_is_stale "$UPDATED_AT" 120; then
+  # Cache stale — попробуй обновить через telegram-ads-view skill (в условии что session alive)
+  if $HELP/check-session.sh; then
+    $HELP/with-lock.sh agent-browser --session-name telegram-ads open "https://ads.telegram.org" >/dev/null 2>&1
+    sleep 3
+    # Извлечь данные из snapshot и записать cache.json (см. telegram-ads-view SKILL.md)
+  fi
+fi
+
+# 2. Скопировать cache в history с датой
+TODAY=$(TZ=Asia/Tashkent date +%Y-%m-%d)
+DEST="$TG_ADS_HISTORY_DIR/$TODAY.json"
+mkdir -p "$TG_ADS_HISTORY_DIR"
+cp "$TG_ADS_CACHE_FILE" "$DEST"
+
+# 3. Очистка: оставить максимум 90 дней истории
+ls "$TG_ADS_HISTORY_DIR"/*.json 2>/dev/null | sort | head -n -90 | xargs -r rm -f
+
+# НЕ отправляй сообщение — silent operation. История накапливается, telegram-ads-analyze её читает.

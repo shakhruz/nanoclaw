@@ -1,0 +1,54 @@
+Keepalive Telegram Ads сессии (ежедневно 09:00 Ташкент).
+
+Цель: (1) поддерживать сессию живой через минимальную активность (один клик продлевает cookie на сервере Telegram); (2) обновить /workspace/global/telegram-ads/cache.json свежим снапшотом кампаний для утреннего брифа.
+
+Используй канонические helper-скрипты из skill telegram-ads-session:
+  HELP=/home/node/.claude/skills/telegram-ads-session
+  . $HELP/common.sh
+
+Шаги:
+
+1. CHECK=$($HELP/check-session.sh); CHECK_EXIT=$?
+   — Exit 0 (alive): переход к шагу 2.
+   — Exit 1 (expired): запусти $HELP/session-probe.sh.
+       Если probe-exit=0 (logged_in) — куки были кратковременно невалидны при чтении, но сессия жива; обнови telemetry status=alive и переходи к шагу 2.
+       Если probe-exit=1 (logged_out) — сессия реально умерла; смотри шаг 4.
+   — Exit 2 (unknown): cookie-файл отсутствует. Молча обнови telemetry status=unknown. НЕ отправляй сообщение.
+
+2. Открой ads.telegram.org через lock:
+   $HELP/with-lock.sh agent-browser --session-name telegram-ads open "https://ads.telegram.org"
+   sleep 2
+   $HELP/with-lock.sh agent-browser --session-name telegram-ads snapshot -i
+
+3. Если видишь dashboard:
+   - Собери: balance (TON), список кампаний (name/status/spent/budget/impressions/clicks/CTR).
+   - Кликни в любую кампанию (активность продлевает session), вернись back.
+   - Запиши cache.json через node one-liner:
+       node -e "
+         const fs=require('fs');
+         const p='/workspace/global/telegram-ads/cache.json';
+         const now=new Date().toISOString();
+         const data={updated_at:now, balance_ton:NUMBER, balance_usd_approx:NUMBER, campaigns:[/*...*/], total_spent_ton:NUMBER, error:null};
+         fs.writeFileSync(p, JSON.stringify(data, null, 2));
+       "
+   - tg_ads_write_session alive telegram-ads-keepalive
+   - НЕ отправляй сообщение (silent success).
+
+4. Если dashboard не появился (видишь login-форму):
+   - Live-probe уже подтвердил logged_out в шаге 1 (или шаг 2 открыл браузер и ты видишь логин).
+   - Проверь dedupe:
+       LAST_ALERT=$(node -e "try{console.log(require('/workspace/global/telegram-ads/session.json').last_alert_ts||'');}catch{console.log('');}")
+     Если LAST_ALERT в пределах 24 часов — НЕ отправляй, только обнови telemetry.
+   - Иначе отправь через mcp__nanoclaw__send_message:
+       "⚠️ Telegram Ads сессия реально истекла (проверено через cookie-check + live-probe). Запусти /telegram-ads-auth"
+   - Запиши в session.json: status=expired, last_alert_ts=<now>.
+
+5. Если ошибка браузера (сеть, таймаут):
+   - tg_ads_write_session unknown telegram-ads-keepalive "<error msg>"
+   - НЕ отправляй сообщение (сетевой флэй не требует тревоги).
+
+ВАЖНО:
+— НЕ используй старый путь /workspace/group/store/telegram-ads-session.json. Канонический файл — /workspace/global/telegram-ads/session.json.
+— НЕ используй --session-name (сломан). Только --session-name telegram-ads.
+— НЕ grep по тексту snapshot "log in" — используй check-session.sh и session-probe.sh.
+

@@ -128,13 +128,17 @@ function buildVolumeMounts(
         });
       }
     } else {
-      // Trusted non-main groups get global memory (read-only)
+      // Trusted non-main groups get global memory writable so they can
+      // contribute to the shared wiki (append to inbox.md, create pages
+      // under projects/<role>/). Curator-only files (index.md, log.md,
+      // essentials.md, tags.md) are protected by the wiki's pre-commit
+      // hook, which reads NANOCLAW_GROUP and rejects non-curator writes.
       const globalDir = path.join(GROUPS_DIR, 'global');
       if (fs.existsSync(globalDir)) {
         mounts.push({
           hostPath: globalDir,
           containerPath: '/workspace/global',
-          readonly: true,
+          readonly: false,
         });
       }
     }
@@ -182,11 +186,55 @@ function buildVolumeMounts(
     'telegram-reactions',
     'inline-buttons',
   ]);
+  // telegram-ads-* skill suite is MILA-internal — available to main + the 4
+  // MILA worker groups (channel-promoter, partner-recruitment, client-profiler,
+  // youtube-manager). Explicitly excluded from ashotai-experts (client-facing
+  // community group) and all public lead groups (already blocked by the
+  // PUBLIC_LEAD_SKILLS allowlist).
+  const TELEGRAM_ADS_BLOCKED_FOLDERS = new Set(['telegram_ashotai-experts']);
+  const isTelegramAdsSkill = (name: string): boolean =>
+    name === 'telegram-ads-session' || name.startsWith('telegram-ads');
+  // Wiki role split:
+  //   main → full `wiki` skill (curator ops: ingest, lint, promote inbox)
+  //   trusted non-main → `wiki-contributor` only (inbox + projects/<role>/)
+  //   public lead → neither (already filtered by PUBLIC_LEAD_SKILLS)
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');
   const skillsDst = path.join(groupSessionsDir, 'skills');
+  // Evict role-incompatible skills from cached sessions so role changes in
+  // src take effect on next spawn instead of leaving stale copies behind.
+  const evictForRole = isMain ? ['wiki-contributor'] : ['wiki'];
+  for (const stale of evictForRole) {
+    const staleDir = path.join(skillsDst, stale);
+    if (fs.existsSync(staleDir)) {
+      fs.rmSync(staleDir, { recursive: true, force: true });
+    }
+  }
+  // Evict telegram-ads-* from folders that shouldn't have it (e.g. if we
+  // previously synced and then added the folder to the blocklist).
+  if (
+    TELEGRAM_ADS_BLOCKED_FOLDERS.has(group.folder) &&
+    fs.existsSync(skillsDst)
+  ) {
+    for (const cached of fs.readdirSync(skillsDst)) {
+      if (isTelegramAdsSkill(cached)) {
+        fs.rmSync(path.join(skillsDst, cached), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+  }
   if (fs.existsSync(skillsSrc)) {
     for (const skillDir of fs.readdirSync(skillsSrc)) {
       if (group.isPublic && !PUBLIC_LEAD_SKILLS.has(skillDir)) continue;
+      if (!isMain && skillDir === 'wiki') continue;
+      if (isMain && skillDir === 'wiki-contributor') continue;
+      if (
+        isTelegramAdsSkill(skillDir) &&
+        TELEGRAM_ADS_BLOCKED_FOLDERS.has(group.folder)
+      ) {
+        continue;
+      }
       const srcDir = path.join(skillsSrc, skillDir);
       if (!fs.statSync(srcDir).isDirectory()) continue;
       const dstDir = path.join(skillsDst, skillDir);
@@ -344,11 +392,19 @@ function buildContainerArgs(
   containerName: string,
   isMain: boolean,
   isPublic: boolean = false,
+  groupFolder: string = '',
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
+
+  // Pass group identity so container-side code (wiki pre-commit hook,
+  // wiki-contributor skill) can enforce role-based write rules.
+  if (groupFolder) {
+    args.push('-e', `NANOCLAW_GROUP=${groupFolder}`);
+    args.push('-e', `NANOCLAW_ROLE=${isMain ? 'curator' : 'contributor'}`);
+  }
 
   // Route API traffic through the credential proxy (containers never see real secrets)
   args.push(
@@ -483,6 +539,7 @@ export async function runContainerAgent(
     containerName,
     input.isMain,
     group.isPublic === true,
+    group.folder,
   );
 
   logger.debug(

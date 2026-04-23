@@ -32,7 +32,7 @@ Find the best channels, bots, and search phrases to target with Telegram Ads. An
 
 5. **Use Telegram Scanner for deep analysis.** For every Tier 1 channel, read at least 20 recent posts via Scanner MCP or `t.me/s/<channel>`. Describe what the channel actually posts, not what you assume from the name.
 
-6. **Save evidence.** For each verified channel, save a screenshot or tgstat page extract to `/workspace/group/telegram-ads-research/<client>/evidence/`. This proves the research is real.
+6. **Save evidence.** For each verified channel, save a screenshot or tgstat page extract to `/workspace/global/telegram-ads/research/<client>/evidence/`. This proves the research is real.
 
 ## Telegram Ads Targeting Reference
 
@@ -102,8 +102,8 @@ For each result page:
 
 Channels that fail verification → remove from list. Do NOT include unverified channels.
 
-Save raw results to `/workspace/group/telegram-ads-research/<client>/channels-raw.md`
-Save screenshots to `/workspace/group/telegram-ads-research/<client>/evidence/`
+Save raw results to `/workspace/global/telegram-ads/research/<client>/channels-raw.md`
+Save screenshots to `/workspace/global/telegram-ads/research/<client>/evidence/`
 
 ### 2b. Deep channel analysis (Telegram Scanner)
 
@@ -362,7 +362,7 @@ Compile everything into a media plan:
 ```
 
 Save to: `wiki/entities/<client>-telegram-ads-mediaplan.md`
-Also save raw research to: `/workspace/group/telegram-ads-research/<client>/`
+Also save raw research to: `/workspace/global/telegram-ads/research/<client>/`
 
 ## Integration with Other Skills
 

@@ -1,0 +1,32 @@
+Weekly Telegram Ads performance report (cron 19:00 каждое воскресенье Ташкент).
+
+Запусти skill telegram-ads-analyze и пришли отчёт через mcp__nanoclaw__send_message.
+
+HELP=/home/node/.claude/skills/telegram-ads-session
+. $HELP/common.sh
+
+# Проверка сессии — если не alive, скажи об этом и не пытайся анализировать
+if ! $HELP/check-session.sh; then
+  RC=$?
+  case $RC in
+    1) MSG="📊 *Weekly Ads Report — пропущен.* Сессия Telegram Ads expired. Запусти /telegram-ads-auth, отчёт придёт в следующее воскресенье.";;
+    2) MSG="📊 *Weekly Ads Report — пропущен.* Кабинет Telegram Ads ещё не настроен. Запусти /telegram-ads-auth для первичной авторизации.";;
+  esac
+  # Send via mcp__nanoclaw__send_message
+  exit 0
+fi
+
+# Прочитай /home/node/.claude/skills/telegram-ads-analyze/SKILL.md и выполни алгоритм:
+# - 7-дневные дельты по каждой кампании
+# - winner/loser по CTR × impressions
+# - UZ vs RU CTR comparison
+# - burn rate по балансу + дни до 0
+# - топ-3 рекомендации (actionable, с цифрами)
+
+# Формат вывода — в SKILL.md секция "Output format". Telegram markdown (одинарные звёздочки).
+# Тема — "📊 *Telegram Ads — Анализ за 7 дней*"
+
+# Перед отправкой убедись:
+# - все цифры из реальных snapshots (history/*.json), не выдуманы
+# - если истории < 3 снапшотов — пиши "истории мало, накапливаем"
+# - если история есть — обязательно конкретные actionable действия

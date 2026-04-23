@@ -30,45 +30,56 @@ Create and manage ad campaigns in the Telegram Ads cabinet (ads.telegram.org) vi
 
 ## Phase 1: Login & Session
 
-### First time setup
+### Mandatory pre-flight check (every flow starts here)
 
-Use `--profile <path>` with a path on the mounted group volume. This creates a persistent browser profile directory that survives container restarts (cookies, localStorage, IndexedDB, service workers all preserved).
+**Always** call the canonical session-check helper from `telegram-ads-session` BEFORE opening the browser. It's ~50ms and removes the false-positive "session expired" interpretation that snapshot-grep used to produce.
 
 ```bash
-# Ensure profile directory exists (once)
-mkdir -p /workspace/group/browser-profiles/telegram-ads
+HELP=/home/node/.claude/skills/telegram-ads-session
+. $HELP/common.sh
 
-# Open with persistent profile
-agent-browser --session-name telegram-ads open "https://ads.telegram.org"
-agent-browser --session-name telegram-ads snapshot -i
-
-# First time: click login, enter phone, user sends code via Telegram, enter code
-# Subsequent runs: already logged in, profile has the session
+if ! $HELP/check-session.sh; then
+  RC=$?
+  if [ "$RC" = "1" ]; then
+    # Cookies say expired — verify with live URL probe BEFORE alerting/aborting
+    if ! $HELP/session-probe.sh; then
+      # Confirmed logged out. Send ONE alert (dedupe via last_alert_ts in session.json),
+      # write status=expired, and stop. Do NOT generate a misleading "campaigns unavailable" report.
+      tg_ads_write_session expired telegram-ads-manager "browser confirmed logged_out"
+      exit 0
+    fi
+    tg_ads_write_session alive telegram-ads-manager "cookie file race; live probe says logged_in"
+  elif [ "$RC" = "2" ]; then
+    # No cookie file — never authenticated. Don't alarm; tell the user to run telegram-ads-auth.
+    tg_ads_write_session unknown telegram-ads-manager "cookie file missing"
+    exit 0
+  fi
+fi
+# At this point session is alive. Proceed.
 ```
 
-**Why `--profile` and NOT `--session-name` or `state save`:**
-- `--session-name` saves inside the container — lost on every restart
-- `state save/load` works but is a JSON file — doesn't capture everything (IndexedDB, service workers)
-- `--profile` is a full browser profile directory on the mounted volume — most reliable persistence
+### Persistent session — `--session-name`
 
-### Subsequent logins
-
-Just use the same `--profile` flag — session restored automatically:
+Cookies persist across container restarts via the mount `/home/node/.agent-browser/sessions/` ↔ `groups/telegram_main/agent-browser-sessions/` (synced from main → MILA on each spawn). Use `--session-name telegram-ads` for every browser command:
 
 ```bash
-agent-browser --session-name telegram-ads open "https://ads.telegram.org"
+$HELP/with-lock.sh agent-browser --session-name telegram-ads open "https://ads.telegram.org"
 agent-browser --session-name telegram-ads snapshot -i
-# Dashboard should appear immediately
+# Dashboard appears (title "✓ Telegram Ads"). If you ever see a login form here despite
+# check-session.sh + session-probe.sh saying alive — STOP and tell the user instead of
+# generating a stale-data report.
 ```
 
-If the page shows login (session expired on Telegram's side, usually after weeks), re-auth by following the first-time flow — the profile will be updated with fresh cookies.
+**Why `--session-name`, not `--profile`:** `--profile` is broken (agent-browser #259 — Chromium ignores the path and starts fresh). `--session-name` writes to `~/.agent-browser/sessions/<name>-default.json` which is mounted from host.
 
-### Force re-login
+### Force re-login (only when check-session.sh consistently returns expired)
+
+Don't do this preventively. Only when `telegram-ads-auth` flow has been triggered explicitly by the user.
 
 ```bash
-rm -rf /workspace/group/browser-profiles/telegram-ads
-mkdir -p /workspace/group/browser-profiles/telegram-ads
-# Then run the login flow fresh
+# This wipes the session — agent-browser will start fresh on next open
+rm -f /home/node/.agent-browser/sessions/telegram-ads-default.json
+# Then run /telegram-ads-auth
 ```
 
 ### Check balance
@@ -267,7 +278,7 @@ agent-browser --session-name telegram-ads snapshot -i
 # Check status: Pending / Approved / Rejected
 ```
 
-If snapshot shows login form instead of dashboard → invoke `telegram-ads-auth` skill.
+If snapshot shows login form despite `check-session.sh` saying alive → that's a contradiction worth investigating. STOP. Send a message to the user with both signals (the JSON from check-session.sh AND a screenshot). Don't auto-trigger `telegram-ads-auth` — let the user decide. False-positive "session expired" reports have caused weeks of noise; never re-introduce them.
 
 ### Report status
 

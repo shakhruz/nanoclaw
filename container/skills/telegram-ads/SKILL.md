@@ -181,7 +181,7 @@ Analyze the chosen ad text and extract:
 ### Step 3: Generate
 
 ```bash
-export WD=/workspace/group/telegram-ads/$(date +%Y%m%d-%H%M%S)
+export WD=/workspace/global/telegram-ads/creatives/$(date +%Y%m%d-%H%M%S)
 mkdir -p $WD
 ```
 

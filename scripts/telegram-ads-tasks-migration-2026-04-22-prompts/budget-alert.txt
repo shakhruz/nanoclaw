@@ -1,0 +1,13 @@
+Telegram Ads budget alert. Промпт запускается ТОЛЬКО когда script-gate говорит wakeAgent=true (баланс < 3 TON ИЛИ дней до 0 < 7).
+
+Через mcp__nanoclaw__send_message пришли краткое предупреждение:
+
+⚠️ *Telegram Ads — низкий баланс*
+Текущий баланс: <BALANCE> TON (~$<USD>)
+Burn rate за 7 дней: <BURN> TON/день
+Хватит на: <DAYS> дней
+
+Рекомендую пополнить кошелёк сейчас, чтобы кампании не остановились.
+Ссылка: https://ads.telegram.org/account → Top Up.
+
+Данные приходят из script_data — используй их напрямую, не дёргай браузер ради того же.
