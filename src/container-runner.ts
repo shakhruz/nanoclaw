@@ -228,10 +228,7 @@ function buildVolumeMounts(
           force: true,
         });
       }
-      if (
-        WEB_SKILLS_BLOCKED_FOLDERS.has(group.folder) &&
-        isWebSkill(cached)
-      ) {
+      if (WEB_SKILLS_BLOCKED_FOLDERS.has(group.folder) && isWebSkill(cached)) {
         fs.rmSync(path.join(skillsDst, cached), {
           recursive: true,
           force: true,
