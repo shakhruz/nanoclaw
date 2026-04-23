@@ -62,36 +62,37 @@ https://milagpt.cc/c/<client-slug>/<doc-type>-<title>-<secret>
 
 5. **Пришли URL пользователю для пересылки клиенту.** Отдельно напомни: «Ссылка приватная, не публиковать в открытых каналах — секрет в URL защищает от перебора, но если URL утечёт в индекс поисковиков — найдут все».
 
-### MILA-группа (client-profiler и др.)
+### MILA client-profiler — ПРЯМАЯ публикация (без main)
 
-Прямая публикация недоступна (в контейнере нет gh+vercel). **Режим предложения**:
+Client-profiler умеет публиковать самостоятельно через `publish-client-doc-api.sh` — он использует GitHub Contents API + `npx vercel` (не нужен ни `gh`, ни `vercel` установленный). Токены лежат в `/workspace/group/config.json`.
 
-1. Напиши черновик HTML в `/workspace/global/web-projects/client-docs/drafts/<client>/<YYYY-MM-DD-HHmm>-<doc>-<title>.html`.
+**Алгоритм:**
 
-2. Рядом положи метаданные `<same-basename>.meta.json`:
+1. Напиши HTML в `/workspace/global/web-projects/client-docs/drafts/<client>/<YYYY-MM-DD-HHmm>-<doc>-<title>.html`.
+2. Запусти:
+   ```bash
+   /home/node/.claude/skills/web/publish-client-doc-api.sh \
+     <client-slug> <doc-type> <title> \
+     /workspace/global/web-projects/client-docs/drafts/<client>/<file>.html \
+     "внутренняя заметка"
+   ```
+3. Helper возвращает JSON — бери `url`, шли клиенту.
+
+**Время:** ~30 сек первый раз (npx качает vercel CLI), ~5 сек следующие.
+
+**Защита:** те же 4 слоя (robots.txt, X-Robots-Tag header, `<meta robots>`, 404 на директорию). Секрет генерится в хелпере.
+
+### Другие MILA-группы (channel-promoter, partner-recruitment, youtube-manager)
+
+Токенов у них нет. Используют режим предложения:
+
+1. Черновик в `/workspace/global/web-projects/client-docs/drafts/<client>/`.
+2. Метаданные `.meta.json`:
    ```json
-   {
-     "client_slug": "acme-corp",
-     "doc_type": "proposal",
-     "title": "ai-director",
-     "note": "после звонка 22.04, акцент на AI-transformation",
-     "requested_by": "client-profiler",
-     "requested_at": "2026-04-23T15:30:00Z"
-   }
+   {"client_slug":"acme-corp","doc_type":"proposal","title":"ai-director","note":"...","requested_by":"channel-promoter","requested_at":"..."}
    ```
-
-3. Пришли в main через `mcp__nanoclaw__send_message`:
-   ```
-   📄 *Черновик клиентского документа*
-   Клиент: acme-corp
-   Тип: proposal (КП)
-   Заголовок: ai-director
-   Файл: /workspace/global/web-projects/client-docs/drafts/acme-corp/2026-04-23-1530-proposal-ai-director.html
-
-   Опубликовать? (размер ~12KB, preview в черновике)
-   ```
-
-4. Main одобряет → запускает `publish-client-doc.sh` с этим файлом → присылает ссылку обратно.
+3. `mcp__nanoclaw__send_message` в main или в `telegram_client-profiler` (если клиентский документ) с просьбой опубликовать.
+4. Принимающая сторона вызывает `publish-client-doc.sh` (main) или `publish-client-doc-api.sh` (client-profiler) → возвращает URL.
 
 ## Ledger — реестр опубликованных
 
