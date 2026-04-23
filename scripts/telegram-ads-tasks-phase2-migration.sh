@@ -45,22 +45,22 @@ NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
 
 # 1. UPDATE channel-promoter daily prompt
 echo "→ Updating task-1776472572612-w6wn7n (channel-promoter daily)..."
-sqlite3 "$DB" "UPDATE scheduled_tasks SET prompt=readfile('$PROMPTS_DIR/channel-promoter-daily.txt') WHERE id='task-1776472572612-w6wn7n'"
+sqlite3 "$DB" "UPDATE scheduled_tasks SET prompt=CAST(readfile('$PROMPTS_DIR/channel-promoter-daily.txt') AS TEXT) WHERE id='task-1776472572612-w6wn7n'"
 
 # 2. INSERT daily snapshot task
 echo "→ Inserting task-ads-daily-snapshot-2026-04-22..."
 sqlite3 "$DB" "DELETE FROM scheduled_tasks WHERE id='task-ads-daily-snapshot-2026-04-22'"
-sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode) VALUES ('task-ads-daily-snapshot-2026-04-22', 'telegram_main', 'tg:33823108', readfile('$PROMPTS_DIR/daily-snapshot.txt'), 'cron', '30 23 * * *', '2026-04-22T23:30:00.000+05:00', 'active', '$NOW_ISO', 'isolated')"
+sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode) VALUES ('task-ads-daily-snapshot-2026-04-22', 'telegram_main', 'tg:33823108', CAST(readfile('$PROMPTS_DIR/daily-snapshot.txt') AS TEXT), 'cron', '30 23 * * *', '2026-04-22T23:30:00.000+05:00', 'active', '$NOW_ISO', 'isolated')"
 
 # 3. INSERT weekly report task
 echo "→ Inserting task-ads-weekly-report-2026-04-22..."
 sqlite3 "$DB" "DELETE FROM scheduled_tasks WHERE id='task-ads-weekly-report-2026-04-22'"
-sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode) VALUES ('task-ads-weekly-report-2026-04-22', 'telegram_main', 'tg:33823108', readfile('$PROMPTS_DIR/weekly-report.txt'), 'cron', '0 19 * * 0', '2026-04-26T19:00:00.000+05:00', 'active', '$NOW_ISO', 'isolated')"
+sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode) VALUES ('task-ads-weekly-report-2026-04-22', 'telegram_main', 'tg:33823108', CAST(readfile('$PROMPTS_DIR/weekly-report.txt') AS TEXT), 'cron', '0 19 * * 0', '2026-04-26T19:00:00.000+05:00', 'active', '$NOW_ISO', 'isolated')"
 
 # 4. INSERT budget alert (script-gated)
 echo "→ Inserting task-ads-budget-alert-2026-04-22 (with script gate)..."
 sqlite3 "$DB" "DELETE FROM scheduled_tasks WHERE id='task-ads-budget-alert-2026-04-22'"
-sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode, script) VALUES ('task-ads-budget-alert-2026-04-22', 'telegram_main', 'tg:33823108', readfile('$PROMPTS_DIR/budget-alert.txt'), 'cron', '0 9,15 * * *', '2026-04-23T09:00:00.000+05:00', 'active', '$NOW_ISO', 'isolated', readfile('$PROMPTS_DIR/budget-alert-script.sh'))"
+sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode, script) VALUES ('task-ads-budget-alert-2026-04-22', 'telegram_main', 'tg:33823108', CAST(readfile('$PROMPTS_DIR/budget-alert.txt') AS TEXT), 'cron', '0 9,15 * * *', '2026-04-23T09:00:00.000+05:00', 'active', '$NOW_ISO', 'isolated', CAST(readfile('$PROMPTS_DIR/budget-alert-script.sh') AS TEXT))"
 
 echo ""
 echo "→ Final telegram-ads task state:"

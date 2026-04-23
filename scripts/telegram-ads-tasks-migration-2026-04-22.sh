@@ -62,13 +62,13 @@ if [ ! -f "$KEEPALIVE_PROMPT_FILE" ] || [ ! -f "$MONTHLY_PROMPT_FILE" ]; then
 fi
 
 echo "→ Updating keepalive prompt (task-keepalive-1776389523000-ads)..."
-sqlite3 "$DB" "UPDATE scheduled_tasks SET prompt=readfile('$KEEPALIVE_PROMPT_FILE') WHERE id='task-keepalive-1776389523000-ads'"
+sqlite3 "$DB" "UPDATE scheduled_tasks SET prompt=CAST(readfile('$KEEPALIVE_PROMPT_FILE') AS TEXT) WHERE id='task-keepalive-1776389523000-ads'"
 
 echo "→ Adding (or replacing) monthly deep-check task..."
 NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
 NEXT_RUN_ISO="2026-05-01T10:00:00.000+05:00"
 sqlite3 "$DB" "DELETE FROM scheduled_tasks WHERE id='task-ads-monthly-healthcheck-2026-04-22'"
-sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode) VALUES ('task-ads-monthly-healthcheck-2026-04-22', 'telegram_main', 'tg:33823108', readfile('$MONTHLY_PROMPT_FILE'), 'cron', '0 10 1 * *', '$NEXT_RUN_ISO', 'active', '$NOW_ISO', 'isolated')"
+sqlite3 "$DB" "INSERT INTO scheduled_tasks (id, group_folder, chat_jid, prompt, schedule_type, schedule_value, next_run, status, created_at, context_mode) VALUES ('task-ads-monthly-healthcheck-2026-04-22', 'telegram_main', 'tg:33823108', CAST(readfile('$MONTHLY_PROMPT_FILE') AS TEXT), 'cron', '0 10 1 * *', '$NEXT_RUN_ISO', 'active', '$NOW_ISO', 'isolated')"
 
 echo ""
 echo "→ Final state — current telegram-ads-related tasks:"
