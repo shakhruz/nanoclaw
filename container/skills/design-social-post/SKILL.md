@@ -5,6 +5,37 @@ description: Generate visual posts for Telegram, Instagram, LinkedIn, Facebook u
 
 # Social Media Post Designer
 
+## 🔴 MANDATORY pre-flight #1 — AshotAI Brand Style
+
+Перед генерацией ЛЮБОГО поста прочитай brand guide и применяй стиль:
+
+```bash
+cat /workspace/global/wiki/projects/octo/brand/ashotai-brand-style.md
+```
+
+Кратко: чёрный фон (`#000000` / `#0A0A0A`), один gold акцент (`#C9A84C`), Inter Bold, заголовок 3-6 слов, 80% whitespace, ОДИН главный элемент, без градиентов и неона.
+
+Включай эти параметры в КАЖДЫЙ prompt к Nano Banana — иначе модель сгенерит «обычный современный пост» (синий, белый фон, цветные акценты), а не AshotAI-стиль.
+
+Brand-checklist после генерации — в guide.
+
+## 🔴 MANDATORY pre-flight #2 (если на посте должен быть Шахруз / клиент / партнёр)
+
+Если в посте лицо конкретного человека — **обязательно** face-reference protocol:
+
+```bash
+cat /workspace/global/assets/faces/README.md   # выбери фото
+# передавай как inline_data в curl к Nano Banana
+```
+
+Полный протокол: `[[architecture/face-reference-protocol]]`. Без reference Nano Banana 2 нарисует случайного похожего по описанию — будет НЕ Шахруз.
+
+После генерации — vision verification (см. протокол).
+
+Если фото нет в каталоге → СТОП, спроси у Шахруза или сообщи в чат «нужно фото <person>».
+
+---
+
 Generate visual content for Telegram channel, Instagram feed, LinkedIn, Facebook. Multiple formats for different content types.
 
 ## Prerequisites

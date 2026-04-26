@@ -5,6 +5,23 @@ description: Generate viral Instagram carousel slides using Nano Banana (Google 
 
 # Instagram Carousel Designer — Viral & Converting
 
+## 🔴 MANDATORY pre-flight (если на слайдах есть Шахруз / клиент / партнёр)
+
+Карусели часто содержат фото эксперта (intro slide, об авторе). **Обязательно** используй face-reference protocol:
+
+```bash
+cat /workspace/global/assets/faces/README.md   # выбери фото — обычно shakhruz-A1-studio для intro
+# передавай как inline_data в curl к Nano Banana / Gemini 3 Pro
+```
+
+Полный протокол: `[[architecture/face-reference-protocol]]`.
+
+Без него — на каждом слайде будет РАЗНОЕ лицо (Nano Banana не сохраняет персонажа между генерациями). Реальный Шахруз — только через reference.
+
+Vision verification после каждого слайда с лицом — обязательна.
+
+---
+
 Generate Instagram carousels optimized for organic reach and conversion. Each carousel drives traffic to the "$5000/мес reality" Telegram channel or the free workshop at ashotai.uz.
 
 ## Prerequisites

@@ -50,10 +50,30 @@ fi
 
 DEST="$REPO_DIR/$DEST_REL"
 
+# Concurrency: serialize publishes to avoid Vercel race-condition errors
+# Cross-platform mkdir-based lock (works on macOS + Linux without flock)
+LOCK_DIR="/tmp/milagpt-cc-publish.lock.d"
+LOCK_TIMEOUT="${PUBLISH_LOCK_TIMEOUT:-300}"
+acquire_lock() {
+  local elapsed=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if [ $elapsed -ge $LOCK_TIMEOUT ]; then return 1; fi
+  done
+  trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT INT TERM
+  return 0
+}
+if ! acquire_lock; then
+  echo "err: failed to acquire publish lock within ${LOCK_TIMEOUT}s — another publish in progress" >&2
+  exit 75
+fi
+
 mkdir -p "$(dirname "$DEST")"
 cp "$SRC" "$DEST"
 
 cd "$REPO_DIR"
+git pull --rebase origin main >/dev/null 2>&1 || true  # avoid push conflicts
 git add "$DEST_REL"
 
 if git diff --cached --quiet; then

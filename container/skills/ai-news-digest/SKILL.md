@@ -1,6 +1,6 @@
 ---
 name: ai-news-digest
-description: Daily AI news digest from curated Telegram channels. Reads the NEWS folder via Telegram Scanner, analyzes last 24h of posts across all channels, deduplicates overlapping stories, ranks by importance, and delivers a morning briefing with analysis and personal relevance. Use for morning briefings or on-demand digest requests.
+description: Comprehensive daily AI news digest. DUAL MODE — morning (08:00 Tashkent, Telegram-focused, 30h window) + evening (20:00, web-focused EN sources). Tracks 6 categories — Models, Companies, Products, People, Trends, Relevant for us. Updates ai-entities wiki cards. Delivers personal detailed report to Shakhruz + lightweight brief for Mila telegram.
 ---
 
 # AI News Morning Digest
@@ -9,8 +9,28 @@ Scan curated AI-focused Telegram channels every morning, synthesize the most imp
 
 ## Trigger
 
-- Scheduled: daily at 8:00 Tashkent (via scheduled task)
+- Scheduled: daily at 8:00 Tashkent (morning, Telegram-focused) + 20:00 Tashkent (evening, web-focused EN)
 - On-demand: "новости", "сводка", "что нового в AI", "ai news", "digest"
+
+## Mode
+
+### Morning (08:00 Tashkent = 03:00 UTC)
+- **Primary sources:** Telegram NEWS folder (last **30 hours**, not 24h — catches late-night EN posts)
+- **Limit per channel:** 50 posts
+- **Focus:** Breaking news, launches, community reaction
+- **Output:** Full personal digest (all 6 sections)
+
+### Evening (20:00 Tashkent = 15:00 UTC)
+- **Primary sources:** Web search (EN) via parallel-search MCP
+- **Search queries run in parallel:**
+  - `"AI news today" site:techcrunch.com OR site:venturebeat.com`
+  - `"new AI model released" 2026`
+  - `"AI startup funding" 2026`
+  - `"OpenAI OR Anthropic OR Google DeepMind" announcement 2026`
+  - `"AI agent" product launch 2026`
+- **Secondary:** Telegram (last 12h since morning digest)
+- **Focus:** What happened in EN world since morning; check if morning stories got official announcements
+- **Output:** Compact update digest (top-3 stories + any EN-only exclusives)
 
 ## Prerequisites
 
@@ -58,9 +78,9 @@ Scanner cannot modify folder membership — folder management is user-controlled
 channels = list_channels()  # All channels in NEWS folder
 ```
 
-For each channel, pull last 24 hours of posts:
+For each channel, pull last **30 hours** of posts (not 24h — catches late-night posts):
 ```
-posts = get_messages(channel=<id>, since=<24h ago>, limit=50)
+posts = get_messages(channel=<id>, hours=30, limit=50)
 ```
 
 Collect post metadata:
@@ -89,6 +109,21 @@ Each post is one of:
 | 🗞️ **Meta-news** | News about AI industry itself | "Layoffs at AI startup..." |
 
 Skip: memes without substance, pure promotion of unknown tools, chain forwards with no added value.
+
+### Step 2b: Classify by Entity Category
+
+After type-classification, also tag each story by AI entity category:
+
+| Category | What to track | Examples |
+|----------|--------------|---------|
+| 🧠 **Models** | New models, versions, benchmarks, capabilities | GPT-5, Claude 3.7, Llama 4 |
+| 💰 **Companies** | Funding, M&A, leadership, layoffs, strategy | Anthropic $40B Google, OpenAI pivot |
+| 🚀 **Products** | New tools, features, integrations, launches | Claude connectors, Sora shutdown |
+| 👤 **People** | Hires, departures, opinions from key figures | Altman tweet, Karpathy post |
+| 📈 **Trends** | Recurring themes, memes, cultural moments | "vibe coding", AI + age, jailbreaks |
+| ⚡ **Relevant for us** | Direct impact on our stack/business | Claude Code bugs, Telegram API changes |
+
+Each story gets ONE primary category tag (secondary allowed).
 
 ### Step 3: Deduplicate stories
 
@@ -163,55 +198,56 @@ OpenAI анонсировала GPT-5 — модель с встроенным c
 *EN источник: @openai_official*
 ```
 
-Structure:
+Structure (6-category template — morning + evening reuse):
 
 ```markdown
 # AI-сводка <DD Month YYYY>
-*Просканировано: N каналов, M постов | Отобрано: K историй*
+*Просканировано: N каналов, M постов + web search | Отобрано: K историй*
+*🌅 Утренний дайджест* (или *🌆 Вечернее обновление*)
 
-## 🔥 Горячее сегодня
+## ⚡ Важно для нас
 
-### 1. <Story headline>
-<2-3 sentence summary>
-📰 Освещено: @channel1, @channel2, @channel3
-🔗 [Подробнее](t.me/channel/post_id)
-💡 **Почему важно:** <personal relevance explanation>
+### 1. <Story with direct impact on our stack/projects>
+<summary>
+💡 **Почему важно:** <specific impact on NanoClaw, Mila, OctoFunnel>
 
-### 2. <Story headline>
-...
+## 🧠 Новые модели
 
-## 📊 Что ещё стоит знать
+- **<Model name>** (компания): <2 sentences — что умеет, чем отличается>
+  📊 Benchmark: <если есть>  🔗 [Link]
 
-### Запуски и продукты
-- Brief bullet on launch X [link]
-- Brief bullet on launch Y [link]
+## 💰 Бизнес и деньги компаний
 
-### Исследования и техники
-- New paper on Z [link] — TL;DR
-- Benchmark result [link]
+- **<Company>**: <event> — $XXX / <what it means>  🔗 [Link]
 
-### Бизнес и деньги
-- Funding round [link]
-- Acquisition [link]
+## 🚀 Продукты и запуски
 
-## 💭 Интересные мнения
+### <Product name>
+<2-3 sentence description>  🔗 [Link]
 
-- "<quote snippet>" — @channel [link]
-  Мой взгляд: <optional Mila commentary>
+## 👤 Люди
 
-## 📈 Тренды недели
+- **<Person>**: <what they said/did>  🔗 [Link]
 
-- 🔥 Topic X — 3 день подряд в топе, набирает обороты
-- 📉 Topic Y — вчера активно обсуждали, сегодня стихло
+## 📈 Тренды и мемы
 
-## 🎯 Action items для тебя
+- **"<trend name>"** — <what it is, how widespread>  🔗 [Link]
 
-- [ ] Посмотреть <specific thing>, потенциально для OctaFunnel
-- [ ] Ответить на вопрос от @someone
-- [ ] ...
+## 📊 Всё остальное
+
+- <brief bullet> [link]
+
+## 🔥 Что греется (multi-day trends)
+
+- **<Topic>** — N день подряд в топе
+  [Update trends.json accordingly — flag with 🔥 if streak >= 3]
+
+## 🎯 Action items
+
+- [ ] <specific action>
 
 ---
-*Следующая сводка: завтра 8:00 | Каналы: /sources | Обратная связь: ответ на это сообщение*
+*Следующая сводка: <next time slot> | Источники: NEWS folder + web (вечером) | Обратная связь: ответ на это сообщение*
 ```
 
 ### Step 7: Deliver
@@ -334,6 +370,33 @@ ai-news:
 
 **Do NOT ingest stories below top-5** — that creates noise in the wiki. Only the most important daily stories should become persistent knowledge.
 
+### Step 8b: Update Entity Cards
+
+For each story tagged as **Companies** or **People** category (Step 2b):
+
+1. Check if entity card exists:
+   - `/workspace/global/wiki/projects/inbox/ai-entities/companies/<slug>.md`
+   - `/workspace/global/wiki/projects/inbox/ai-entities/people/<slug>.md`
+
+2. If card exists — append to "Последние новости":
+   ```
+   - **YYYY-MM-DD** — <brief event summary>
+   ```
+   Update `last_updated` in frontmatter.
+
+3. If card doesn't exist AND company/person is mentioned **2+ days in a row** — create new card using README.md template in respective folder.
+
+4. Update `/workspace/group/ai-news/trends.json`:
+   ```json
+   topics["<slug>"] = {
+     "dates": { ..., "YYYY-MM-DD": <count> },
+     "streak": <N>,
+     "last_seen": "YYYY-MM-DD",
+     "label": "Human-readable label"
+   }
+   ```
+   Flag topic with 🔥 in digest if `streak >= 3`.
+
 ### Step 9: Archive
 
 Save full digest to:
@@ -349,16 +412,45 @@ wiki/log.md
 ## [YYYY-MM-DD] digest | AI news briefing (K stories, top: <headline>)
 ```
 
+### Step 9b: Brief for Mila telegram
+
+After saving the personal digest, extract a LIGHTWEIGHT version for the Channel department.
+
+**Format:** 3-5 bullet points, only the most newsworthy, channel-appropriate tone.
+
+```
+💡 Для поста в @ashotonline (на рассмотрение)
+
+Топ-темы сегодня:
+• <story 1 headline> — [ссылка]
+• <story 2 headline> — [ссылка]
+• <story 3 headline> — [ссылка]
+
+Рекомендую тему для поста: "<headline>" — хорошо заходит как [формат].
+```
+
+Send via `mcp__nanoclaw__send_message` with `chat_jid="tg:-1003766101438"` (MILA telegram new supergroup ID).
+This is a SUGGESTION, not a published post — Channel decides what to use.
+
 ## Schedule Setup
 
 Two scheduled tasks — daily morning + weekly Sunday meta-digest.
 
-### Daily morning digest
+### Daily morning digest (08:00 Tashkent = 03:00 UTC)
 
 ```
-prompt: "Run AI news digest. Read ai-news-digest skill. Process last 24h of NEWS folder channels via Telegram Scanner. Deliver morning briefing to chat. Ingest top-5 stories to wiki/sources/. Archive in /workspace/group/ai-news/. Skip delivery if quiet day."
+prompt: "Run AI news MORNING digest. Read ai-news-digest skill, Mode=Morning. Process last 30h of NEWS folder channels via Telegram Scanner. Tag stories by 6 categories (Step 2b). Deliver full personal briefing to chat. Update entity cards (Step 8b). Ingest top-5 to wiki/sources/. Send lightweight brief to Mila telegram (Step 9b). Archive in /workspace/group/ai-news/. Skip if quiet day."
 schedule_type: cron
-schedule_value: "0 8 * * *"   # 8:00 Tashkent daily
+schedule_value: "0 3 * * *"   # 08:00 Tashkent daily
+context_mode: group
+```
+
+### Daily evening update (20:00 Tashkent = 15:00 UTC)
+
+```
+prompt: "Run AI news EVENING update. Read ai-news-digest skill, Mode=Evening. Web search EN sources for today's AI news (parallel-search MCP). Also scan Telegram (last 12h since morning). Tag by 6 categories. Deliver compact update digest to chat (top-3 + EN exclusives). Update trends.json. No wiki ingest needed for evening (morning handles it)."
+schedule_type: cron
+schedule_value: "0 15 * * *"   # 20:00 Tashkent daily
 context_mode: group
 ```
 

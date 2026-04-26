@@ -45,6 +45,27 @@ SCOPE="${VERCEL_SCOPE:-milagpt}"
 
 [ -d "$REPO_DIR/.git" ] || { echo "err: not a git repo: $REPO_DIR" >&2; exit 1; }
 
+# Ensure PATH for launchd-spawned daemon (vercel/git/jq в /opt/homebrew, node в fnm)
+export PATH="/Users/milagpt/.local/share/fnm/aliases/default/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+# Concurrency: serialize publishes to avoid Vercel race-condition errors
+LOCK_DIR="/tmp/milagpt-cc-publish.lock.d"
+LOCK_TIMEOUT="${PUBLISH_LOCK_TIMEOUT:-300}"
+acquire_lock() {
+  local elapsed=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    sleep 1
+    elapsed=$((elapsed + 1))
+    if [ $elapsed -ge $LOCK_TIMEOUT ]; then return 1; fi
+  done
+  trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT INT TERM
+  return 0
+}
+if ! acquire_lock; then
+  echo "err: failed to acquire publish lock within ${LOCK_TIMEOUT}s — another publish in progress" >&2
+  exit 75
+fi
+
 # Ledger path: prefer container-mounted global dir, fallback to host dev path
 if [ -n "${LEDGER_FILE:-}" ]; then
   LEDGER="$LEDGER_FILE"
@@ -91,6 +112,7 @@ else
 fi
 
 cd "$REPO_DIR"
+git pull --rebase origin main >/dev/null 2>&1 || true  # avoid push conflicts
 git add "$DEST_REL"
 
 if git diff --cached --quiet; then

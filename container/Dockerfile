@@ -55,6 +55,13 @@ RUN apt-get update && \
 # --break-system-packages needed for Debian 12 PEP 668
 RUN pip3 install --break-system-packages --no-cache-dir rembg[cpu] onnxruntime numpy
 
+# jq — JSON parsing tool used by container skill scripts (admin-ipc/admin-request.sh,
+# publish-client-doc-api.sh, web-asset-upload helpers). Added in a separate RUN to
+# avoid invalidating the heavy apt-install layer above (which holds the pinned
+# Chromium version critical for the telegram-ads browser fingerprint).
+RUN apt-get update && apt-get install -y --no-install-recommends jq \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set Chromium path for agent-browser
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
@@ -89,8 +96,22 @@ RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/
 # as root, uses mount --bind to shadow .env, then drops to the host user via setpriv.
 RUN printf '#!/bin/bash\nset -e\n\n# Shadow .env so the agent cannot read host secrets (requires root)\nif [ "$(id -u)" = "0" ] && [ -f /workspace/project/.env ]; then\n  mount --bind /dev/null /workspace/project/.env\nfi\n\n# Compile agent-runner\ncd /app && npx tsc --outDir /tmp/dist 2>&1 >&2\nln -s /app/node_modules /tmp/dist/node_modules\nchmod -R a-w /tmp/dist\n\n# Capture stdin (secrets JSON) to temp file\ncat > /tmp/input.json\n\n# Drop privileges if running as root (main-group containers)\nif [ "$(id -u)" = "0" ] && [ -n "$RUN_UID" ]; then\n  chown "$RUN_UID:$RUN_GID" /tmp/input.json /tmp/dist\n  exec setpriv --reuid="$RUN_UID" --regid="$RUN_GID" --clear-groups -- node /tmp/dist/index.js < /tmp/input.json\nfi\n\nexec node /tmp/dist/index.js < /tmp/input.json\n' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
-# Set ownership to node user (non-root) for writable directories
-RUN chown -R node:node /workspace && chmod 777 /home/node
+# Set ownership to node user (non-root) for writable directories.
+# Pre-create /home/node/.agent-browser so the runtime mount of
+# /home/node/.agent-browser/sessions doesn't auto-create the parent as
+# root-owned (which would block agent-browser from creating its Unix
+# socket — see https://github.com/anthropics/agent-browser/ — and force
+# every spawn to create an isolated profile without persisted cookies,
+# breaking telegram-ads-* skills).
+#
+# 777 (not 755) is required because main-group containers drop privileges
+# via setpriv to the host user's UID (e.g. uid=501 on macOS), which is
+# different from the image's "node" user (uid=1000). 755 would only let
+# uid=1000 write; 777 lets any uid create the agent-browser socket here.
+# This is a socket-only dir, no security concern with broad perms.
+RUN mkdir -p /home/node/.agent-browser \
+ && chown -R node:node /workspace /home/node/.agent-browser \
+ && chmod 777 /home/node /home/node/.agent-browser
 
 # Set working directory to group workspace
 WORKDIR /workspace/group
