@@ -31,6 +31,146 @@ export interface TelegramChannelOpts {
   ) => void;
 }
 
+// --- Bot pool for agent teams (Swarm) ----------------------------------
+// Send-only Api instances (no polling). Each pool bot can be renamed at
+// runtime via setMyName so messages appear from a distinct identity in
+// Telegram. See groups/global/wiki/architecture/sub-agents.md for the
+// coordination model.
+const poolApis: Api[] = [];
+// Deterministic role→pool-index map. Populated from TELEGRAM_BOT_POOL_ROLES
+// (comma-separated, same order as TELEGRAM_BOT_POOL). If role isn't in this
+// map, fall back to round-robin. Deterministic mapping ensures bot username
+// + avatar + display-name stay consistent across sessions and restarts.
+const roleBotMap = new Map<string, number>();
+// `${groupFolder}:${senderName}` → index (round-robin fallback cache).
+const senderBotMap = new Map<string, number>();
+let nextPoolIndex = 0;
+
+export async function initBotPool(
+  tokens: string[],
+  roles: string[] = [],
+): Promise<void> {
+  for (const token of tokens) {
+    try {
+      const api = new Api(token);
+      const me = await api.getMe();
+      poolApis.push(api);
+      logger.info(
+        { username: me.username, id: me.id, poolSize: poolApis.length },
+        'Pool bot initialized',
+      );
+    } catch (err) {
+      logger.error({ err }, 'Failed to initialize pool bot');
+    }
+  }
+  // Register deterministic role mapping. Trim + skip empty entries so
+  // callers can leave gaps (e.g. "Marketer,,Targetist" maps indices 0 + 2).
+  roles.forEach((role, i) => {
+    const name = role.trim();
+    if (!name || i >= poolApis.length) return;
+    roleBotMap.set(name, i);
+  });
+  // Canonicalise each bot's display name now, so UIs that persist
+  // bot-names between sessions (Telegram /mybots) don't carry stale
+  // labels from previous rename events.
+  for (const [role, idx] of roleBotMap) {
+    try {
+      await poolApis[idx].setMyName(role);
+      logger.info({ role, poolIndex: idx }, 'Pool bot canonical name set');
+    } catch (err) {
+      logger.warn({ role, err }, 'Failed to canonicalise pool bot name');
+    }
+  }
+  if (poolApis.length > 0) {
+    logger.info(
+      { count: poolApis.length, canonicalRoles: roleBotMap.size },
+      'Telegram bot pool ready',
+    );
+  }
+}
+
+/**
+ * Send a message from a pool bot assigned to `sender`. Uses deterministic
+ * role→bot mapping when configured (via TELEGRAM_BOT_POOL_ROLES); falls back
+ * to round-robin for ad-hoc senders. Falls back to main bot if no pool.
+ */
+export async function sendPoolMessage(
+  chatId: string,
+  text: string,
+  sender: string,
+  groupFolder: string,
+  fallback: (chatId: string, text: string) => Promise<void>,
+): Promise<void> {
+  if (poolApis.length === 0) {
+    await fallback(chatId, text);
+    return;
+  }
+  // Deterministic: known role maps to a fixed pool index regardless of
+  // arrival order. Bot was already renamed to this role at initBotPool,
+  // so no setMyName/delay needed here — send immediately.
+  let idx = roleBotMap.get(sender);
+  if (idx !== undefined) {
+    // no-op: display name, avatar and username all stable
+  } else {
+    // Fallback: round-robin cache per (group, sender).
+    const key = `${groupFolder}:${sender}`;
+    idx = senderBotMap.get(key);
+    if (idx === undefined) {
+      idx = nextPoolIndex % poolApis.length;
+      nextPoolIndex++;
+      senderBotMap.set(key, idx);
+      try {
+        await poolApis[idx].setMyName(sender);
+        // Small delay lets Telegram propagate the name change before the
+        // first message arrives; otherwise the first post can appear from
+        // the old bot name.
+        await new Promise((r) => setTimeout(r, 2000));
+        logger.info(
+          { sender, groupFolder, poolIndex: idx },
+          'Assigned and renamed pool bot (round-robin fallback)',
+        );
+      } catch (err) {
+        logger.warn(
+          { sender, err },
+          'Failed to rename pool bot (sending anyway)',
+        );
+      }
+    }
+  }
+  const api = poolApis[idx];
+  const numericId = chatId.replace(/^tg:/, '');
+  const MAX_LENGTH = 4096;
+  // Try Telegram Markdown v1 first (matches what Mila's CLAUDE.md teaches
+  // pool-sender agents: single *bold*, _italic_, `code`); on failure, fall
+  // back to plain so a bad markdown sequence doesn't silence the bot.
+  const sendChunk = async (chunk: string): Promise<void> => {
+    try {
+      await api.sendMessage(numericId, chunk, { parse_mode: 'Markdown' });
+    } catch (err) {
+      logger.debug(
+        { sender, err },
+        'Pool Markdown send failed, retrying as plain text',
+      );
+      await api.sendMessage(numericId, chunk);
+    }
+  };
+  try {
+    if (text.length <= MAX_LENGTH) {
+      await sendChunk(text);
+    } else {
+      for (let i = 0; i < text.length; i += MAX_LENGTH) {
+        await sendChunk(text.slice(i, i + MAX_LENGTH));
+      }
+    }
+    logger.info(
+      { chatId, sender, poolIndex: idx, length: text.length },
+      'Pool message sent',
+    );
+  } catch (err) {
+    logger.error({ chatId, sender, err }, 'Failed to send pool message');
+  }
+}
+
 /**
  * Send a message with Telegram Markdown parse mode, falling back to plain text.
  * Claude's output naturally matches Telegram's Markdown v1 format:
@@ -745,7 +885,8 @@ export class TelegramChannel implements Channel {
               ),
             );
             // edit the original message to reflect decision
-            const label = decision === 'approve' ? '✅ Одобрено' : '❌ Отказано';
+            const label =
+              decision === 'approve' ? '✅ Одобрено' : '❌ Отказано';
             try {
               await ctx.editMessageReplyMarkup({
                 reply_markup: { inline_keyboard: [] },
@@ -1037,12 +1178,40 @@ export class TelegramChannel implements Channel {
 }
 
 registerChannel('telegram', (opts: ChannelOpts) => {
-  const envVars = readEnvFile(['TELEGRAM_BOT_TOKEN']);
+  const envVars = readEnvFile([
+    'TELEGRAM_BOT_TOKEN',
+    'TELEGRAM_BOT_POOL',
+    'TELEGRAM_BOT_POOL_ROLES',
+  ]);
   const token =
     process.env.TELEGRAM_BOT_TOKEN || envVars.TELEGRAM_BOT_TOKEN || '';
   if (!token) {
     logger.warn('Telegram: TELEGRAM_BOT_TOKEN not set');
     return null;
   }
-  return new TelegramChannel(token, opts);
+  const channel = new TelegramChannel(token, opts);
+
+  // Agent-team bot pool. Tokens are comma-separated in TELEGRAM_BOT_POOL.
+  // Optional TELEGRAM_BOT_POOL_ROLES in the SAME ORDER assigns a canonical
+  // role name to each token — e.g. tokens[0] → "Маркетолог" always, so
+  // display name + avatar + username stay stable across restarts and
+  // spawn orders. Unset roles fall back to round-robin at send time.
+  const poolRaw =
+    process.env.TELEGRAM_BOT_POOL || envVars.TELEGRAM_BOT_POOL || '';
+  const rolesRaw =
+    process.env.TELEGRAM_BOT_POOL_ROLES ||
+    envVars.TELEGRAM_BOT_POOL_ROLES ||
+    '';
+  const poolTokens = poolRaw
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const poolRoles = rolesRaw.split(',').map((r) => r.trim());
+  if (poolTokens.length > 0) {
+    // Fire-and-forget — pool init is async but we don't need to block
+    // channel registration on it. Callers will fall back to the main bot
+    // until the pool is ready.
+    void initBotPool(poolTokens, poolRoles);
+  }
+  return channel;
 });
