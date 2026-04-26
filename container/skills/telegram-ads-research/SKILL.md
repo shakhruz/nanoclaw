@@ -48,6 +48,28 @@ All three can be combined with country, language, and topic filters.
 
 **Key insight:** Unlike Meta/Google, you pick EXACT placements. No algorithm decides. This means research quality directly determines ad performance. 100 mediocre placements < 10 perfect ones.
 
+## CRITICAL: URL Format Restrictions by Targeting Type
+
+Техническое ограничение из живых кампаний (апрель 2026):
+
+| Тип таргетинга | URL назначения | Поддерживается? |
+|---|---|---|
+| Search phrases | `t.me/bot` (прямая ссылка) | ✅ |
+| Search phrases | `t.me/bot?start=funnel` (deep link) | ❌ Ошибка формы |
+| Channels/Bots | `t.me/bot?start=funnel` (deep link) | ✅ Работает |
+
+**Правило:** `?start=` параметры НЕ поддерживаются для Search таргетинга. Для Channels и Bot таргетинга — `?start=` работает и позволяет вести в конкретную воронку.
+
+**Вывод:**
+- Search → ведём на дефолтную воронку (`t.me/mila_gpt_bot` без параметров)
+- Channels/Bots → можно вести в конкретную воронку: `?start=clients`, `?start=partners`, `?start=octo`
+
+**Также:** `ashotaiuz_bot` автоматически отклоняется Telegram как «Prohibited content» (апрель 2026). Использовать `mila_gpt_bot` или `ashotonline`.
+
+## Language Strategy
+
+Фокус на русскоязычной аудитории. Узбекоязычные кампании получали показы, но потом decline — не рекомендуется пока.
+
 ## Phase 1: Define Product & Audience
 
 Load client profile or ask:
@@ -367,5 +389,5 @@ Also save raw research to: `/workspace/global/telegram-ads/research/<client>/`
 ## Integration with Other Skills
 
 - **After research** → use `telegram-ads` skill to generate full creative packages (banners, video) for winning placements
-- **After creatives** → use `telegram-ads-manager` skill to create campaigns in ads.telegram.org
+- **After creatives** → use `telegram-ads-http` skill to create campaigns in ads.telegram.org
 - **Ongoing** → re-run research monthly to find new channels/bots, expand media plan

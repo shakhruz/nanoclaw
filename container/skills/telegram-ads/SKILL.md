@@ -20,7 +20,7 @@ Generate complete ad packages: copy + image + video for Telegram Ads platform (a
 ## Related Skills
 
 - **Before this skill:** Run `telegram-ads-research` to find channels, bots, and search phrases for targeting. The research produces a media plan with scored placements.
-- **After this skill:** Run `telegram-ads-manager` to create campaigns in ads.telegram.org and upload creatives.
+- **After this skill:** Run `telegram-ads-http` to create campaigns in ads.telegram.org and upload creatives.
 
 ## Targeted Mode (from media plan)
 
