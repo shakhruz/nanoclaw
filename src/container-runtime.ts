@@ -35,6 +35,9 @@ export function hostGatewayArgs(): string[] {
   if (os.platform() === 'linux') {
     return ['--add-host=host.docker.internal:host-gateway'];
   }
+  // macOS Apple Container has no --add-host flag. The host gateway is
+  // resolved by IP (CONTAINER_HOST_GATEWAY); callers that need to reach
+  // it (e.g. OneCLI proxy URL rewriting) must substitute the IP themselves.
   return [];
 }
 

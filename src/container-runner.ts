@@ -11,7 +11,7 @@ import { OneCLI } from '@onecli-sh/sdk';
 
 import { CONTAINER_IMAGE, DATA_DIR, GROUPS_DIR, ONECLI_API_KEY, ONECLI_URL, TIMEZONE } from './config.js';
 import { readContainerConfig, writeContainerConfig } from './container-config.js';
-import { CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import { CONTAINER_HOST_GATEWAY, CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
@@ -109,7 +109,9 @@ async function spawnContainer(session: Session): Promise<void> {
   const containerName = `nanoclaw-v2-${agentGroup.folder}-${Date.now()}`;
   // OneCLI agent identifier is always the agent group id — stable across
   // sessions and reversible via getAgentGroup() for approval routing.
-  const agentIdentifier = agentGroup.id;
+  // OneCLI identifier regex: lowercase letters, numbers, hyphens; must start with a letter, ≤50 chars.
+  // Our agent_group ids use underscores (e.g. ag_39180d1a0182) and may exceed 50 — sanitize.
+  const agentIdentifier = agentGroup.id.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 50).replace(/^[^a-z]+/, 'a');
   const args = await buildContainerArgs(
     mounts,
     containerName,
@@ -266,6 +268,26 @@ function buildMounts(
   // skill symlinks)
   mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
 
+  // Shared Anthropic OAuth credentials (one file across all agent_groups so
+  // there's no race when claude CLI rotates the refresh_token). Each container
+  // sees /home/node/.claude/.credentials.json via a symlink we create in the
+  // .claude-shared dir. The mount itself is RW so claude CLI can rotate creds
+  // and persist them across container restarts.
+  const anthropicCredsDir = path.join(projectRoot, 'data', 'anthropic-creds');
+  if (fs.existsSync(path.join(anthropicCredsDir, '.credentials.json'))) {
+    mounts.push({
+      hostPath: anthropicCredsDir,
+      containerPath: '/workspace/anthropic-creds',
+      readonly: false,
+    });
+    // Ensure the symlink exists in this group's .claude-shared. Symlink target
+    // is the container-side path (resolves only inside the container).
+    const credSymlinkPath = path.join(claudeDir, '.credentials.json');
+    if (!fs.existsSync(credSymlinkPath) && !fs.lstatSync(credSymlinkPath, { throwIfNoEntry: false })) {
+      fs.symlinkSync('/workspace/anthropic-creds/.credentials.json', credSymlinkPath);
+    }
+  }
+
   // Shared agent-runner source — read-only, same code for all groups.
   const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');
   mounts.push({ hostPath: agentRunnerSrc, containerPath: '/app/src', readonly: true });
@@ -416,6 +438,31 @@ async function buildContainerArgs(
     }
   } catch (err) {
     log.warn('OneCLI gateway error — container will have no credentials', { containerName, err });
+  }
+
+  // Apple Container has no --add-host: rewrite host.docker.internal to the
+  // bridge gateway IP in OneCLI's HTTPS_PROXY/HTTP_PROXY env values.
+  for (let i = 0; i < args.length; i++) {
+    if (typeof args[i] === 'string' && args[i].includes('host.docker.internal')) {
+      args[i] = args[i].replace(/host\.docker\.internal/g, CONTAINER_HOST_GATEWAY);
+    }
+  }
+
+  // Bypass HTTPS_PROXY for Anthropic — claude CLI handles its own OAuth via
+  // .credentials.json, OneCLI's interception strips/replaces Authorization.
+  args.push('-e', 'NO_PROXY=api.anthropic.com,claude.ai,*.anthropic.com,*.claude.ai');
+  args.push('-e', 'no_proxy=api.anthropic.com,claude.ai,*.anthropic.com,*.claude.ai');
+
+  // Strip OneCLI's CLAUDE_CODE_OAUTH_TOKEN=placeholder injection so claude CLI
+  // inside the container falls back to /home/node/.claude/.credentials.json
+  // (mounted RW so it can auto-refresh OAuth tokens via claude.ai). Anthropic
+  // banned third-party-tool OAuth on api.anthropic.com in 2026, so the
+  // OneCLI proxy path can't broker subscription auth — claude CLI's own
+  // auth handler must do it directly.
+  for (let i = args.length - 2; i >= 0; i--) {
+    if (args[i] === '-e' && args[i + 1] === 'CLAUDE_CODE_OAUTH_TOKEN=placeholder') {
+      args.splice(i, 2);
+    }
   }
 
   // Fallback credential injection from .env (works even when OneCLI is unavailable).
