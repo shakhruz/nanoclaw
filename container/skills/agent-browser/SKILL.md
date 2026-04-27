@@ -103,20 +103,29 @@ agent-browser find placeholder "Search" type "query"
 
 ### Authentication with saved state
 
+**Auto-load on first browser use:** Before your first `agent-browser open` in each session, load all saved auth states:
 ```bash
-# Login once
+# Load all saved auth sessions (run once at start of each browser session)
+for f in /workspace/group/*-auth.json; do
+  [ -f "$f" ] && agent-browser state load "$f" && echo "Loaded: $f"
+done
+```
+This restores Instagram, Google, CRM, and any other saved sessions. Auth files persist between container restarts because `/workspace/group/` is mounted from the host.
+
+**Save a new auth state** after manual login:
+```bash
 agent-browser open https://app.example.com/login
 agent-browser snapshot -i
 agent-browser fill @e1 "username"
 agent-browser fill @e2 "password"
 agent-browser click @e3
 agent-browser wait --url "**/dashboard"
-agent-browser state save auth.json
-
-# Later: load saved state
-agent-browser state load auth.json
-agent-browser open https://app.example.com/dashboard
+agent-browser state save /workspace/group/example-auth.json
 ```
+
+**Naming convention:** `<service>-auth.json` — e.g. `instagram-auth.json`, `google-auth.json`, `crm-auth.json`.
+
+**Session expiry:** If a site redirects to login, re-authenticate and re-save.
 
 ### Cookies & Storage
 

@@ -1,0 +1,223 @@
+{
+  "merges": [
+    {
+      "branch": "skill/compact",
+      "merge_commit": "767289f51300e76d406a3cc403cea6442bc89347",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/telegram",
+      "merge_commit": "7ae5badf65d8c486aa29aa89fee2b95bef795245",
+      "v2_install": "/add-telegram"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "113ef3bd3d84fac666a082d92cf30288ae8e4d86",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "2c3300bde91b9680042fb70f9068843e7514f4a7",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/telegram",
+      "merge_commit": "1d5167885ae1218c66e862eccdf90a08c50dc411",
+      "v2_install": "/add-telegram"
+    },
+    {
+      "branch": "skill/telegram",
+      "merge_commit": "99d7e87410d4549834adb1d52b670e4e9d032a86",
+      "v2_install": "/add-telegram"
+    },
+    {
+      "branch": "skill/telegram",
+      "merge_commit": "869171e55f810513260657e308d064d5da870743",
+      "v2_install": "/add-telegram"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "e3e6ccdbd932bc74f09833197d5f62ab750fd2cc",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/telegram",
+      "merge_commit": "6f9c58fe850d021ca4dd40880fe097486fd28d16",
+      "v2_install": "/add-telegram"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "614278187d70798e614ed051adebcb53d4d27afc",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "832a9aa049cca13c94b64d43b014d4552146beea",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "2906a0ec10c27fca89f0dcc9a32f8a72b012ff68",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "540db101bc7bb59ffd08630b1af69ac7899f1569",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "44da74b6c55ad5f26892935c7702ff1abf38afee",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "51e776b286f7a2187d8250212330297c58bccc0e",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "c0acbfebbff8a9d8edea3cb43c127a3b1b1b5b6e",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "5a16f9883838c4dbf576bc7cf9004587f998c961",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "b2bfe92598af9a2f9b457171b1d8dbaefdb3e4c4",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "ed02382e6801b0000f99457b06d9362e970d9aa6",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "3014194ed4d7d7c369ed1e7071f04425d5963097",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "efab26c97df27b1bedcdf157bcb73d96696e6869",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "e0401a519fc8717299888ed5e17f3d0c6ed3fe2c",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "0432d136179755af0a828195ccc354331d25fc72",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "20ba7a0b915310df6dc1a97314242c5c0892d54a",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "79ddc47703efd89c441b3a5d1f0858964ce91cad",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "a64551a8f3029b621b0e927215bccb95115636f1",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "90d38388ad61aa1f84e33e46d75961923d65807d",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "f59c863c95303aae96e0fde6f27d4c3edcac2935",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "5d226ba56c301ddb282d8ff0f6884dfb62b3f7a4",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "6833d76c74a6f2d8acc78ba4f7f5c504f2ae2581",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "6c8216e255199a2027dbd106063a3e5b1cf9ffd6",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "de69b8c6b2674ece9be903802638a08471402a79",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "b66b123886fefe6c7758e0e896d8d94a6f391714",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/compact",
+      "merge_commit": "5f9774df55394a6caa042f4e11b53d318f0348f1",
+      "v2_install": "/add-compact"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "4cdd09c45c92cbb663ae43fb680948d7125c8c20",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "2f1933775c00a092f1b981ce18f7b1f9d9da9ff4",
+      "v2_install": "/convert-to-apple-container"
+    },
+    {
+      "branch": "skill/apple-container",
+      "merge_commit": "7c04dafa3df78ba739a40b172d20d5b3df0c7d42",
+      "v2_install": "/convert-to-apple-container"
+    }
+  ],
+  "user_authored_skill_dirs": [
+    "add-compact",
+    "add-discord",
+    "add-emacs",
+    "add-gmail",
+    "add-image-vision",
+    "add-macos-statusbar",
+    "add-ollama-tool",
+    "add-parallel",
+    "add-pdf-reader",
+    "add-reactions",
+    "add-second-brain",
+    "add-slack",
+    "add-telegram",
+    "add-telegram-swarm",
+    "add-voice-transcription",
+    "add-whatsapp",
+    "channel-formatting",
+    "claw",
+    "convert-to-apple-container",
+    "customize",
+    "debug",
+    "get-qodo-rules",
+    "init-onecli",
+    "migrate-from-openclaw",
+    "migrate-nanoclaw",
+    "qodo-pr-resolver",
+    "setup",
+    "update-nanoclaw",
+    "update-skills",
+    "use-local-whisper",
+    "use-native-credential-proxy",
+    "x-integration"
+  ]
+}

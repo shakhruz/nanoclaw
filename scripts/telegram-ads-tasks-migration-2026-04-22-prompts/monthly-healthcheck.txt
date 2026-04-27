@@ -1,0 +1,24 @@
+Monthly deep session-health check for Telegram Ads (once a month, 1st at 10:00 Tashkent).
+
+Цель: реконсиляция session.json с реальностью, поскольку cookie живёт до 2027 и ежедневный keepalive может не ловить edge-cases.
+
+HELP=/home/node/.claude/skills/telegram-ads-session
+. $HELP/common.sh
+
+1. Запусти $HELP/check-session.sh — получи JSON с expires_at + days_left.
+
+2. Если days_left > 30 — обнови session.json (status=alive, expires_at, days_left), silent.
+
+3. Если 7 < days_left <= 30 — отправь ОДНО сообщение:
+   "📅 Telegram Ads сессия истекает через N дней (до <дата>). Запланируй переавторизацию заранее."
+
+4. Если days_left <= 7 — отправь срочное:
+   "⚠️ Telegram Ads сессия истекает через N дней. Запусти /telegram-ads-auth в ближайшее время, иначе реклама встанет."
+
+5. Если days_left <= 0 (expired) — отправь:
+   "❌ Telegram Ads сессия истекла. Запусти /telegram-ads-auth сейчас."
+
+6. Если unknown (cookie-файл отсутствует) — silent, не тревожить.
+
+Не вызывай браузер в этом таске — только cookie-inspection. Браузер — дело keepalive и view.
+

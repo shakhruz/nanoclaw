@@ -1,0 +1,962 @@
+{
+  "head": "ebb13082bb85749ffb8b69e08dde81b4a6edfa7d",
+  "merge_base": "934f063aff5c30e7b49ce58b53b41901d3472a3e",
+  "upstream_ref": "upstream/main",
+  "files": [
+    {
+      "path": ".claude/skills/add-karpathy-llm-wiki/SKILL.md",
+      "additions": 0,
+      "deletions": 110
+    },
+    {
+      "path": ".claude/skills/add-karpathy-llm-wiki/llm-wiki.md",
+      "additions": 0,
+      "deletions": 75
+    },
+    {
+      "path": ".claude/skills/add-second-brain/SKILL.md",
+      "additions": 376,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/llm-wiki.md",
+      "additions": 124,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/.gitignore",
+      "additions": 60,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/.obsidian/app.json",
+      "additions": 15,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/.obsidian/appearance.json",
+      "additions": 6,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/.obsidian/workspace.json",
+      "additions": 64,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/claude-md-contributor.md",
+      "additions": 14,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/claude-md-curator.md",
+      "additions": 22,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/concepts/README.md",
+      "additions": 64,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/container-skill-wiki-v2.md",
+      "additions": 401,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/entities/README.md",
+      "additions": 74,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/essentials.md",
+      "additions": 75,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/inbox.md",
+      "additions": 13,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/index.md",
+      "additions": 97,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/journal/README.md",
+      "additions": 67,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/log.md",
+      "additions": 21,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/people/README.md",
+      "additions": 90,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/projects/README.md",
+      "additions": 98,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/sources/README.md",
+      "additions": 92,
+      "deletions": 0
+    },
+    {
+      "path": ".claude/skills/add-second-brain/templates/tags.md",
+      "additions": 57,
+      "deletions": 0
+    },
+    {
+      "path": ".github/workflows/bump-version.yml",
+      "additions": 0,
+      "deletions": 33
+    },
+    {
+      "path": ".github/workflows/update-tokens.yml",
+      "additions": 0,
+      "deletions": 43
+    },
+    {
+      "path": ".gitignore",
+      "additions": 9,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/00-plan.md",
+      "additions": 96,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/01-applied-skills.md",
+      "additions": 30,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/02-custom-skills.md",
+      "additions": 74,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/03-channels.md",
+      "additions": 64,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/04-orchestrator.md",
+      "additions": 160,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/05-admin-ipc.md",
+      "additions": 188,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/06-container-skills.md",
+      "additions": 107,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/07-groups.md",
+      "additions": 134,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/08-scripts-services.md",
+      "additions": 110,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/09-credentials.md",
+      "additions": 87,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/10-skill-interactions.md",
+      "additions": 87,
+      "deletions": 0
+    },
+    {
+      "path": ".nanoclaw-migrations/index.md",
+      "additions": 43,
+      "deletions": 0
+    },
+    {
+      "path": "admin-panel/README.md",
+      "additions": 68,
+      "deletions": 0
+    },
+    {
+      "path": "admin-panel/server.cjs",
+      "additions": 331,
+      "deletions": 0
+    },
+    {
+      "path": "container/Dockerfile",
+      "additions": 60,
+      "deletions": 10
+    },
+    {
+      "path": "container/agent-runner/src/index.ts",
+      "additions": 266,
+      "deletions": 32
+    },
+    {
+      "path": "container/agent-runner/src/ipc-mcp-stdio.ts",
+      "additions": 228,
+      "deletions": 0
+    },
+    {
+      "path": "container/build.sh",
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "path": "container/skills/admin-ipc/SKILL.md",
+      "additions": 116,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/admin-ipc/admin-await.sh",
+      "additions": 36,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/admin-ipc/admin-request.sh",
+      "additions": 53,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/agent-browser/SKILL.md",
+      "additions": 15,
+      "deletions": 6
+    },
+    {
+      "path": "container/skills/ai-news-digest/SKILL.md",
+      "additions": 609,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/audio-lesson/SKILL.md",
+      "additions": 208,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/client-prep/SKILL.md",
+      "additions": 99,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/client-profile/SKILL.md",
+      "additions": 267,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/content-planner/SKILL.md",
+      "additions": 174,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-avatar/SKILL.md",
+      "additions": 285,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-hd-image/SKILL.md",
+      "additions": 175,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-instagram-carousel/SKILL.md",
+      "additions": 150,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-lead-magnet/SKILL.md",
+      "additions": 196,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-social-post/SKILL.md",
+      "additions": 186,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-workshop-kit/SKILL.md",
+      "additions": 175,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/design-youtube-thumbnail/SKILL.md",
+      "additions": 128,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/doc-contract/SKILL.md",
+      "additions": 112,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/doc-invoice/SKILL.md",
+      "additions": 130,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/doc-proposal/SKILL.md",
+      "additions": 110,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/elevenlabs-music/SKILL.md",
+      "additions": 128,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/elevenlabs-tts/SKILL.md",
+      "additions": 141,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/elevenlabs-voice/SKILL.md",
+      "additions": 111,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/funnel-preview/SKILL.md",
+      "additions": 110,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/funnel-preview/build-and-publish.sh",
+      "additions": 195,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/funnel-strategist/SKILL.md",
+      "additions": 124,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/funnel-tester/SKILL.md",
+      "additions": 129,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/humanizer-ru/SKILL.md",
+      "additions": 335,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/illustrator/SKILL.md",
+      "additions": 205,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/inline-buttons/SKILL.md",
+      "additions": 573,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-analyzer/SKILL.md",
+      "additions": 171,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-competitor-tracker/SKILL.md",
+      "additions": 155,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-competitor-tracker/tracker.sh",
+      "additions": 169,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-daily-report/SKILL.md",
+      "additions": 104,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-daily-report/run.sh",
+      "additions": 240,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-expert/SKILL.md",
+      "additions": 142,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/instagram-reel-script/SKILL.md",
+      "additions": 348,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/livestream-thumbnail/SKILL.md",
+      "additions": 285,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/media-maker/SKILL.md",
+      "additions": 177,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/SKILL.md",
+      "additions": 147,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/boost.sh",
+      "additions": 55,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/insights.sh",
+      "additions": 25,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/lib.sh",
+      "additions": 55,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/list.sh",
+      "additions": 27,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/pause.sh",
+      "additions": 10,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/resume.sh",
+      "additions": 10,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/status.sh",
+      "additions": 46,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/meta-ads/update-budget.sh",
+      "additions": 22,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-access/SKILL.md",
+      "additions": 109,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-access/access.sh",
+      "additions": 106,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-api/SKILL.md",
+      "additions": 138,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-api/call.sh",
+      "additions": 65,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-creator/SKILL.md",
+      "additions": 203,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-editor/SKILL.md",
+      "additions": 126,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/octofunnel-explorer/SKILL.md",
+      "additions": 116,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/olx-ad-generator/SKILL.md",
+      "additions": 317,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/olx-research/SKILL.md",
+      "additions": 152,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/plaud-gmail-watcher/SKILL.md",
+      "additions": 179,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/plaud-transcript/SKILL.md",
+      "additions": 203,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/sales/SKILL.md",
+      "additions": 186,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-generator/SKILL.md",
+      "additions": 258,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/SKILL.md",
+      "additions": 185,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/balance-deposit.sh",
+      "additions": 41,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/clone-ad.sh",
+      "additions": 40,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/create-ad.sh",
+      "additions": 80,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/delete-ad.sh",
+      "additions": 23,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/edit-cpm.sh",
+      "additions": 26,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/edit-daily-budget.sh",
+      "additions": 24,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/edit-status.sh",
+      "additions": 48,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/edit-title.sh",
+      "additions": 25,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/get-account.sh",
+      "additions": 122,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/get-ad.sh",
+      "additions": 112,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/incr-budget.sh",
+      "additions": 26,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/lib.sh",
+      "additions": 139,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-http/upload-media.sh",
+      "additions": 42,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads-research/SKILL.md",
+      "additions": 393,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-ads/SKILL.md",
+      "additions": 486,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-channel-publisher/SKILL.md",
+      "additions": 193,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/telegram-reactions/SKILL.md",
+      "additions": 197,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/voice-message/SKILL.md",
+      "additions": 109,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-asset-upload/SKILL.md",
+      "additions": 135,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-audit/SKILL.md",
+      "additions": 83,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-client-doc/SKILL.md",
+      "additions": 178,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-deploy/SKILL.md",
+      "additions": 52,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-inventory/SKILL.md",
+      "additions": 84,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-logs/SKILL.md",
+      "additions": 48,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web-publish/SKILL.md",
+      "additions": 77,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/SKILL.md",
+      "additions": 55,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/publish-asset-api.sh",
+      "additions": 102,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/publish-asset.sh",
+      "additions": 64,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/publish-client-doc-api.sh",
+      "additions": 138,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/publish-client-doc.sh",
+      "additions": 154,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/publish-html.sh",
+      "additions": 101,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/refresh-inventory.sh",
+      "additions": 117,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/render-video.sh",
+      "additions": 66,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/web/vercel-scope.sh",
+      "additions": 4,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/website-analyzer/SKILL.md",
+      "additions": 125,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/wiki-contributor/SKILL.md",
+      "additions": 149,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/wiki-contributor/wiki-contributor.sh",
+      "additions": 95,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/wiki/SKILL.md",
+      "additions": 401,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/youtube-analyzer/SKILL.md",
+      "additions": 127,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/youtube-upload/SKILL.md",
+      "additions": 423,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/zernio-analytics/SKILL.md",
+      "additions": 134,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/zernio-inbox/SKILL.md",
+      "additions": 158,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/zernio-monitor/SKILL.md",
+      "additions": 104,
+      "deletions": 0
+    },
+    {
+      "path": "container/skills/zernio-publisher/SKILL.md",
+      "additions": 203,
+      "deletions": 0
+    },
+    {
+      "path": "groups/_public-lead/CLAUDE.md",
+      "additions": 98,
+      "deletions": 0
+    },
+    {
+      "path": "groups/_shared-products/catalog.md",
+      "additions": 108,
+      "deletions": 0
+    },
+    {
+      "path": "groups/_shared-products/objections.md",
+      "additions": 43,
+      "deletions": 0
+    },
+    {
+      "path": "groups/_shared-products/script.md",
+      "additions": 180,
+      "deletions": 0
+    },
+    {
+      "path": "groups/_shared-products/videos.md",
+      "additions": 100,
+      "deletions": 0
+    },
+    {
+      "path": "groups/global/CLAUDE.md",
+      "additions": 18,
+      "deletions": 0
+    },
+    {
+      "path": "package-lock.json",
+      "additions": 1869,
+      "deletions": 145
+    },
+    {
+      "path": "package.json",
+      "additions": 12,
+      "deletions": 4
+    },
+    {
+      "path": "scripts/admin-ipc-daemon.js",
+      "additions": 666,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/sync-skills-all-groups.sh",
+      "additions": 71,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/budget-alert-script.sh",
+      "additions": 37,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/budget-alert.txt",
+      "additions": 13,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/channel-promoter-daily.txt",
+      "additions": 57,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/daily-snapshot.txt",
+      "additions": 28,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/keepalive.txt",
+      "additions": 54,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/monthly-healthcheck.txt",
+      "additions": 24,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22-prompts/weekly-report.txt",
+      "additions": 32,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-migration-2026-04-22.sh",
+      "additions": 79,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/telegram-ads-tasks-phase2-migration.sh",
+      "additions": 71,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/web-tasks-migration-2026-04-23-prompts/domain-health.txt",
+      "additions": 34,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/web-tasks-migration-2026-04-23-prompts/weekly-inventory.txt",
+      "additions": 34,
+      "deletions": 0
+    },
+    {
+      "path": "scripts/web-tasks-migration-2026-04-23.sh",
+      "additions": 51,
+      "deletions": 0
+    },
+    {
+      "path": "setup/service.ts",
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "path": "src/channels/gmail.test.ts",
+      "additions": 76,
+      "deletions": 0
+    },
+    {
+      "path": "src/channels/gmail.ts",
+      "additions": 364,
+      "deletions": 0
+    },
+    {
+      "path": "src/channels/index.ts",
+      "additions": 7,
+      "deletions": 1
+    },
+    {
+      "path": "src/channels/telegram.test.ts",
+      "additions": 1175,
+      "deletions": 0
+    },
+    {
+      "path": "src/channels/telegram.ts",
+      "additions": 1217,
+      "deletions": 0
+    },
+    {
+      "path": "src/config.ts",
+      "additions": 6,
+      "deletions": 1
+    },
+    {
+      "path": "src/container-runner.test.ts",
+      "additions": 6,
+      "deletions": 11
+    },
+    {
+      "path": "src/container-runner.ts",
+      "additions": 300,
+      "deletions": 52
+    },
+    {
+      "path": "src/container-runtime.test.ts",
+      "additions": 52,
+      "deletions": 22
+    },
+    {
+      "path": "src/container-runtime.ts",
+      "additions": 93,
+      "deletions": 41
+    },
+    {
+      "path": "src/credential-proxy.test.ts",
+      "additions": 192,
+      "deletions": 0
+    },
+    {
+      "path": "src/credential-proxy.ts",
+      "additions": 125,
+      "deletions": 0
+    },
+    {
+      "path": "src/db.ts",
+      "additions": 62,
+      "deletions": 2
+    },
+    {
+      "path": "src/image.ts",
+      "additions": 100,
+      "deletions": 0
+    },
+    {
+      "path": "src/index.ts",
+      "additions": 241,
+      "deletions": 13
+    },
+    {
+      "path": "src/ipc.ts",
+      "additions": 212,
+      "deletions": 6
+    },
+    {
+      "path": "src/router.ts",
+      "additions": 21,
+      "deletions": 2
+    },
+    {
+      "path": "src/session-commands.test.ts",
+      "additions": 247,
+      "deletions": 0
+    },
+    {
+      "path": "src/session-commands.ts",
+      "additions": 163,
+      "deletions": 0
+    },
+    {
+      "path": "src/types.ts",
+      "additions": 48,
+      "deletions": 0
+    }
+  ]
+}

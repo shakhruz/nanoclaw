@@ -1,0 +1,334 @@
+[
+  {
+    "folder": "_public-lead",
+    "has_claude_md": true,
+    "claude_md_bytes": 7460,
+    "files": [
+      "CLAUDE.md"
+    ]
+  },
+  {
+    "folder": "_shared-products",
+    "has_claude_md": false,
+    "claude_md_bytes": 0,
+    "files": [
+      "catalog.md",
+      "objections.md",
+      "script.md",
+      "videos.md"
+    ]
+  },
+  {
+    "folder": "global",
+    "has_claude_md": true,
+    "claude_md_bytes": 6292,
+    "files": [
+      "CLAUDE.md",
+      "admin-ipc",
+      "assets",
+      "attachments",
+      "avatars",
+      "campaigns",
+      "clients",
+      "dario-amodei.png",
+      "octofunnel-auth",
+      "octofunnel-config.json",
+      "partners",
+      "pub-staging",
+      "telegram-ads",
+      "test-write",
+      "web-projects",
+      "wiki",
+      "workshops",
+      "youtube"
+    ]
+  },
+  {
+    "folder": "main",
+    "has_claude_md": true,
+    "claude_md_bytes": 11239,
+    "files": [
+      "CLAUDE.md"
+    ]
+  },
+  {
+    "folder": "telegram_ashotai-experts",
+    "has_claude_md": true,
+    "claude_md_bytes": 10603,
+    "files": [
+      "CLAUDE.md",
+      "CLAUDE.md.backup-20260421",
+      "agent-browser-sessions",
+      "attachments",
+      "config.json",
+      "logs",
+      "store"
+    ]
+  },
+  {
+    "folder": "telegram_channel-promoter",
+    "has_claude_md": true,
+    "claude_md_bytes": 28235,
+    "files": [
+      "CLAUDE.md",
+      "CLAUDE.md.backup-20260421",
+      "agent-browser-sessions",
+      "ai-news",
+      "ashotonline",
+      "attachments",
+      "browser-profiles",
+      "carousel-20260422-073759",
+      "config.json",
+      "content",
+      "conversations",
+      "dario-400-b64.txt",
+      "dario-compressed.jpg",
+      "dario-post-text.txt",
+      "logs",
+      "post-designs",
+      "research",
+      "sources",
+      "telegram-ads",
+      "telegram-ads-research"
+    ]
+  },
+  {
+    "folder": "telegram_client-profiler",
+    "has_claude_md": true,
+    "claude_md_bytes": 15870,
+    "files": [
+      ".gitignore",
+      ".vercel",
+      "CLAUDE.md",
+      "CLAUDE.md.backup-20260421",
+      "agent-browser-sessions",
+      "assets",
+      "attachments",
+      "avatars",
+      "clients",
+      "config.json",
+      "conversations",
+      "instagram-analysis",
+      "logs",
+      "post-designs",
+      "skills-pending"
+    ]
+  },
+  {
+    "folder": "telegram_inbox",
+    "has_claude_md": true,
+    "claude_md_bytes": 15163,
+    "files": [
+      "CLAUDE.md",
+      "agent-browser-sessions",
+      "ai-news",
+      "attachments",
+      "config.json",
+      "conversations",
+      "logs",
+      "sources",
+      "store",
+      "youtube-analysis"
+    ]
+  },
+  {
+    "folder": "telegram_instagram",
+    "has_claude_md": true,
+    "claude_md_bytes": 28124,
+    "files": [
+      "CLAUDE.md",
+      "agent-browser-sessions",
+      "attachments",
+      "carousel-20260426-075547",
+      "carousel-3types-entrepreneurs-20260427",
+      "carousel-5000-20260426-120752",
+      "carousel-5000-brief",
+      "carousel-5000-demo",
+      "carousel-5000-final",
+      "carousel-5000-fixed",
+      "carousel-5000-v10",
+      "carousel-5000-v11",
+      "carousel-5000-v2",
+      "carousel-5000-v9",
+      "carousel-ai-marketer-20260427",
+      "carousel-clients-hybrid",
+      "carousel-content-5platforms-20260427",
+      "carousel-first1000-20260427",
+      "carousel-losing-clients-20260427",
+      "carousel-losing-clients-redesign",
+      "carousel-losing-clients-v2",
+      "config.json",
+      "content-ideas.md",
+      "conversations",
+      "instagram-daily-report",
+      "lead-magnet-clients-20260427",
+      "logs",
+      "wiki"
+    ]
+  },
+  {
+    "folder": "telegram_main",
+    "has_claude_md": true,
+    "claude_md_bytes": 55316,
+    "files": [
+      ".DS_Store",
+      ".agents",
+      ".archived-skills-telegram-ads-status-2026-04-23",
+      ".claude",
+      ".git",
+      ".scheduled-tasks-backup",
+      "CLAUDE.md",
+      "CLAUDE.md.backup-20260421",
+      "agent-browser-sessions",
+      "agent-browser-socket",
+      "ai-news",
+      "architecture",
+      "attachments",
+      "avatars",
+      "banners",
+      "browser-profiles",
+      "browser-state",
+      "carousel-gpt-image2-review",
+      "client-bot",
+      "client-profiles",
+      "config.json",
+      "conversations",
+      "crm-auth.json",
+      "funnel-creates",
+      "funnel-edits",
+      "instagram-analysis",
+      "instagram-auth.json",
+      "logos",
+      "logs",
+      "media-plan",
+      "metafunnels.js",
+      "mf-state.json",
+      "morning-report.js",
+      "notifications",
+      "npm-cache",
+      "octofunnel-exploration",
+      "octofunnel-knowledge-base.md",
+      "octofunnel-quiz",
+      "plaud-ingest-progress.json",
+      "post-designs",
+      "preferences.md",
+      "screenshots",
+      "site-analysis",
+      "skills",
+      "skills-lock.json",
+      "sources",
+      "store",
+      "tasks.md",
+      "telegram-ads",
+      "telegram-ads-research",
+      "telegram-ads-session.json",
+      "tenders-2026-04-22.html",
+      "test-huashu",
+      "test-slide-1.png",
+      "test-slide-3.png",
+      "test-slide-cta.png",
+      "test-thumbnail.png",
+      "thumbnails",
+      "tmp-npm",
+      "uploads",
+      "wiki",
+      "youtube-analysis",
+      "zernio-analytics",
+      "zernio-analytics.json",
+      "zernio-frequency.json"
+    ]
+  },
+  {
+    "folder": "telegram_octo",
+    "has_claude_md": true,
+    "claude_md_bytes": 41387,
+    "files": [
+      "CLAUDE.md",
+      "agent-browser-sessions",
+      "attachments",
+      "config.json",
+      "conversations",
+      "crm-main.png",
+      "crm-screenshot.png",
+      "funnel-lichnyy-brend-landing.png",
+      "funnel-urok1.png",
+      "logs",
+      "octofunnel-exploration",
+      "review-lichnyy-brend-v21.html",
+      "review-lichnyy-brend.html",
+      "skills",
+      "tmp-banner",
+      "wiki"
+    ]
+  },
+  {
+    "folder": "telegram_partner-recruitment",
+    "has_claude_md": true,
+    "claude_md_bytes": 14962,
+    "files": [
+      "CLAUDE.md",
+      "CLAUDE.md.backup-20260421",
+      "agent-browser-sessions",
+      "attachments",
+      "config.json",
+      "conversations",
+      "logs",
+      "partner-recruitment"
+    ]
+  },
+  {
+    "folder": "telegram_youtube-manager",
+    "has_claude_md": true,
+    "claude_md_bytes": 29726,
+    "files": [
+      "CLAUDE.md",
+      "CLAUDE.md.backup-20260421",
+      "agent-browser-sessions",
+      "attachments",
+      "config.json",
+      "content",
+      "conversations",
+      "logos",
+      "logs",
+      "node_modules",
+      "package-lock.json",
+      "package.json",
+      "scripts",
+      "sources",
+      "thumbnails",
+      "wiki-staging",
+      "youtube",
+      "zernio-analytics"
+    ]
+  },
+  {
+    "folder": "tg_lead-5753885263",
+    "has_claude_md": true,
+    "claude_md_bytes": 4162,
+    "files": [
+      "CLAUDE.md",
+      "agent-browser-sessions",
+      "logs"
+    ]
+  },
+  {
+    "folder": "tg_lead-8242423492",
+    "has_claude_md": true,
+    "claude_md_bytes": 4761,
+    "files": [
+      "CLAUDE.md",
+      "agent-browser-sessions",
+      "logs",
+      "wiki"
+    ]
+  },
+  {
+    "folder": "tg_lead-863350578",
+    "has_claude_md": true,
+    "claude_md_bytes": 7460,
+    "files": [
+      "CLAUDE.md",
+      "logs"
+    ]
+  }
+]

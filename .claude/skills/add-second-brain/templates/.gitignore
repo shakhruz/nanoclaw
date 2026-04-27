@@ -1,0 +1,60 @@
+# Binary media — kept locally only, not pushed to GitHub
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.oga
+*.aac
+*.flac
+*.opus
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.m4v
+
+# Heavy image originals — keep optimized only
+*.heic
+*.raw
+*.dng
+*.tiff
+*.psd
+*.ai
+
+# PLAUD / voice archives — keep local only
+**/plaud-archive/**
+**/plaud-raw/**
+**/voice-raw/**
+
+# Media catalogs keep .md but not binaries inside subdirs
+media/**/*.jpg
+media/**/*.jpeg
+media/**/*.png
+media/**/*.gif
+media/**/*.webp
+media/**/*.bmp
+media/**/*.svg
+!media/**/*.md
+!media/**/*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Onecli artifacts
+.onecli/
+
+# Lint reports keep for history but ignore working files
+lint-reports/.tmp/
+
+# Local-only working files
+*.local.md
+.scratch/
