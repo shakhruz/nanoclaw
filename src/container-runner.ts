@@ -11,7 +11,13 @@ import { OneCLI } from '@onecli-sh/sdk';
 
 import { CONTAINER_IMAGE, DATA_DIR, GROUPS_DIR, ONECLI_API_KEY, ONECLI_URL, TIMEZONE } from './config.js';
 import { readContainerConfig, writeContainerConfig } from './container-config.js';
-import { CONTAINER_HOST_GATEWAY, CONTAINER_RUNTIME_BIN, hostGatewayArgs, readonlyMountArgs, stopContainer } from './container-runtime.js';
+import {
+  CONTAINER_HOST_GATEWAY,
+  CONTAINER_RUNTIME_BIN,
+  hostGatewayArgs,
+  readonlyMountArgs,
+  stopContainer,
+} from './container-runtime.js';
 import { composeGroupClaudeMd } from './claude-md-compose.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getDb, hasTable } from './db/connection.js';
@@ -111,7 +117,11 @@ async function spawnContainer(session: Session): Promise<void> {
   // sessions and reversible via getAgentGroup() for approval routing.
   // OneCLI identifier regex: lowercase letters, numbers, hyphens; must start with a letter, ≤50 chars.
   // Our agent_group ids use underscores (e.g. ag_39180d1a0182) and may exceed 50 — sanitize.
-  const agentIdentifier = agentGroup.id.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 50).replace(/^[^a-z]+/, 'a');
+  const agentIdentifier = agentGroup.id
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .slice(0, 50)
+    .replace(/^[^a-z]+/, 'a');
   const args = await buildContainerArgs(
     mounts,
     containerName,
