@@ -121,8 +121,16 @@ async function spawnContainer(session: Session): Promise<void> {
   );
 
   log.info('Spawning container', { sessionId: session.id, agentGroup: agentGroup.name, containerName });
+  log.info('[debug] container args', { cmd: CONTAINER_RUNTIME_BIN, args: args.join(' \\\n  ') });
 
   const container = spawn(CONTAINER_RUNTIME_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  // Log stdout too (container run may write progress here)
+  container.stdout?.on('data', (data) => {
+    for (const line of data.toString().trim().split('\n')) {
+      if (line) log.info(`[container-stdout] ${line}`, { container: agentGroup.folder });
+    }
+  });
 
   activeContainers.set(session.id, { process: container, containerName });
   markContainerRunning(session.id);
@@ -130,7 +138,7 @@ async function spawnContainer(session: Session): Promise<void> {
   // Log stderr
   container.stderr?.on('data', (data) => {
     for (const line of data.toString().trim().split('\n')) {
-      if (line) log.debug(line, { container: agentGroup.folder });
+      if (line) log.info(`[container-stderr] ${line}`, { container: agentGroup.folder });
     }
   });
 
@@ -410,6 +418,22 @@ async function buildContainerArgs(
     log.warn('OneCLI gateway error — container will have no credentials', { containerName, err });
   }
 
+  // Fallback credential injection from .env (works even when OneCLI is unavailable).
+  // Reads CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY directly from .env so containers
+  // can authenticate with Anthropic without an Agent Vault.
+  {
+    const { readEnvFile } = await import('./env.js');
+    const fallback = readEnvFile([
+      'CLAUDE_CODE_OAUTH_TOKEN',
+      'ANTHROPIC_API_KEY',
+      'ANTHROPIC_BASE_URL',
+      'ANTHROPIC_AUTH_TOKEN',
+    ]);
+    for (const [k, v] of Object.entries(fallback)) {
+      if (v) args.push('-e', `${k}=${v}`);
+    }
+  }
+
   // Host gateway
   args.push(...hostGatewayArgs());
 
@@ -431,6 +455,10 @@ async function buildContainerArgs(
   }
 
   // Override entrypoint: run v2 entry point directly via Bun (no tsc, no stdin).
+  // Override WORKDIR too — Dockerfile sets /workspace/group (legacy), but the
+  // host mounts the session dir at /workspace without that subfolder. Apple
+  // Container errors on missing cwd; Docker would silently create it.
+  args.push('--workdir', '/workspace');
   args.push('--entrypoint', 'bash');
 
   // Use per-agent-group image if one has been built, otherwise base image
