@@ -142,6 +142,12 @@ function safeParseContent(raw: string): { text?: string; sender?: string; sender
  * Creates messaging group + session if they don't exist yet.
  */
 export async function routeInbound(event: InboundEvent): Promise<void> {
+  log.info('[trace] routeInbound entry', {
+    channelType: event.channelType,
+    platformId: event.platformId,
+    threadId: event.threadId,
+    isMention: event.message.isMention === true,
+  });
   // 0. Apply the adapter's thread policy. Non-threaded adapters (Telegram,
   //    WhatsApp, iMessage, email) collapse threads to the channel.
   const adapter = getChannelAdapter(event.channelType);
