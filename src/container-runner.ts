@@ -479,19 +479,13 @@ async function buildContainerArgs(
     }
   }
 
-  // Bypass HTTPS_PROXY for hosts whose secrets aren't in the OneCLI vault
-  // (or where we explicitly don't want proxying). Sub-agents call these
-  // services directly using the API keys we inject below as env.
-  const noProxyHosts = [
-    'api.anthropic.com', 'claude.ai', '*.anthropic.com', '*.claude.ai',
-    'openrouter.ai', '*.openrouter.ai',
-    'api.deepgram.com', '*.deepgram.com',
-    'api.apify.com', '*.apify.com',
-    'api.zernio.com', '*.zernio.com',
-    'api.todoist.com', '*.todoist.com',
-    'api.parallel.ai', '*.parallel.ai',
-    'backend.composio.dev', '*.composio.dev',
-  ].join(',');
+  // Bypass HTTPS_PROXY only for Anthropic — third-party-tool OAuth was banned
+  // at api.anthropic.com in April 2026, so the OneCLI proxy can't broker
+  // subscription auth. Claude Code CLI inside the container handles it
+  // directly via the .credentials.json mount. All other vendors (OpenAI,
+  // OpenRouter, Deepgram, Apify, Zernio, Todoist, Parallel, Composio) go
+  // through the OneCLI proxy with credentials auto-injected from the vault.
+  const noProxyHosts = ['api.anthropic.com', 'claude.ai', '*.anthropic.com', '*.claude.ai'].join(',');
   args.push('-e', `NO_PROXY=${noProxyHosts}`);
   args.push('-e', `no_proxy=${noProxyHosts}`);
 
@@ -507,9 +501,13 @@ async function buildContainerArgs(
     }
   }
 
-  // Fallback credential injection from .env (works even when OneCLI is unavailable).
-  // Reads CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY directly from .env so containers
-  // can authenticate with Anthropic without an Agent Vault.
+  // Direct env injection for keys NOT in the OneCLI vault: Anthropic
+  // (banned for OAuth proxy by Anthropic in 2026 — claude CLI handles direct),
+  // and Telegram (port + main bot token used by skills that talk to the
+  // Bot API directly, not via the proxy).
+  // Everything else (OpenAI, OpenRouter, Deepgram, Apify, Zernio, Todoist,
+  // Parallel, Composio) is in the vault and gets injected by OneCLI proxy
+  // when the container makes its API call.
   {
     const { readEnvFile } = await import('./env.js');
     const fallback = readEnvFile([
@@ -517,18 +515,6 @@ async function buildContainerArgs(
       'ANTHROPIC_API_KEY',
       'ANTHROPIC_BASE_URL',
       'ANTHROPIC_AUTH_TOKEN',
-      // Direct-pass third-party keys for sub-agent skills that need them.
-      // OneCLI vault doesn't have entries for all of these, and the gateway
-      // is bound to 127.0.0.1 only so containers can't reach it via bridge
-      // anyway. The NO_PROXY list above keeps these calls direct.
-      'OPENROUTER_API_KEY',
-      'OPENAI_API_KEY',
-      'APIFY_TOKEN',
-      'ZERNIO_API_KEY',
-      'TODOIST_API_TOKEN',
-      'PARALLEL_API_KEY',
-      'DEEPGRAM_API_KEY',
-      'COMPOSIO_API_KEY',
       'TELEGRAM_BOT_TOKEN',
       'TELEGRAM_SCANNER_PORT',
     ]);
