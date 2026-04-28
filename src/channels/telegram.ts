@@ -203,6 +203,22 @@ registerChannelAdapter('telegram', {
     const telegramAdapter = createTelegramAdapter({
       botToken: token,
       mode: 'polling',
+      longPolling: {
+        // Default getUpdates omits message_reaction. Subscribe explicitly so
+        // user emoji reactions reach the agent (inbound). Outbound reactions
+        // via add_reaction MCP tool work regardless of this list.
+        allowedUpdates: [
+          'message',
+          'edited_message',
+          'channel_post',
+          'edited_channel_post',
+          'callback_query',
+          'message_reaction',
+          'message_reaction_count',
+          'my_chat_member',
+          'chat_member',
+        ],
+      },
     });
     const bridge = createChatSdkBridge({
       adapter: telegramAdapter,
