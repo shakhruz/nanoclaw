@@ -109,7 +109,9 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const serialized = message.toJSON() as Record<string, any>;
 
-    // Download attachment data before serialization loses fetchData()
+    // Download attachment data before serialization loses fetchData(). Also
+    // transcribe voice/audio inline via Deepgram so the agent receives text.
+    let voiceTranscript: string | null = null;
     if (message.attachments && message.attachments.length > 0) {
       const enriched = [];
       for (const att of message.attachments) {
@@ -126,6 +128,20 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
           try {
             const buffer = await att.fetchData();
             entry.data = buffer.toString('base64');
+            // Transcribe the first audio/voice attachment we encounter.
+            if (!voiceTranscript) {
+              const { isTranscribableAttachment, transcribeAudio } = await import('../transcription.js');
+              if (isTranscribableAttachment({ type: att.type, mimeType: att.mimeType })) {
+                voiceTranscript = await transcribeAudio(buffer, att.mimeType);
+                if (voiceTranscript) {
+                  entry.transcript = voiceTranscript;
+                  log.info('Transcribed voice attachment', {
+                    chars: voiceTranscript.length,
+                    mimeType: att.mimeType,
+                  });
+                }
+              }
+            }
           } catch (err) {
             log.warn('Failed to download attachment', { type: att.type, err });
           }
@@ -133,6 +149,15 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
         enriched.push(entry);
       }
       serialized.attachments = enriched;
+    }
+
+    // Inline transcript into message text so the agent reads it as a normal
+    // message even without inspecting attachments. Existing text (caption)
+    // is preserved alongside the transcript.
+    if (voiceTranscript) {
+      const existing = (serialized.text as string | undefined) ?? '';
+      const block = `[Voice: ${voiceTranscript}]`;
+      serialized.text = existing ? `${existing}\n\n${block}` : block;
     }
 
     // Extract reply context via platform-specific hook
