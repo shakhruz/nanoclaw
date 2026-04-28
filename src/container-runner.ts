@@ -479,10 +479,21 @@ async function buildContainerArgs(
     }
   }
 
-  // Bypass HTTPS_PROXY for Anthropic — claude CLI handles its own OAuth via
-  // .credentials.json, OneCLI's interception strips/replaces Authorization.
-  args.push('-e', 'NO_PROXY=api.anthropic.com,claude.ai,*.anthropic.com,*.claude.ai');
-  args.push('-e', 'no_proxy=api.anthropic.com,claude.ai,*.anthropic.com,*.claude.ai');
+  // Bypass HTTPS_PROXY for hosts whose secrets aren't in the OneCLI vault
+  // (or where we explicitly don't want proxying). Sub-agents call these
+  // services directly using the API keys we inject below as env.
+  const noProxyHosts = [
+    'api.anthropic.com', 'claude.ai', '*.anthropic.com', '*.claude.ai',
+    'openrouter.ai', '*.openrouter.ai',
+    'api.deepgram.com', '*.deepgram.com',
+    'api.apify.com', '*.apify.com',
+    'api.zernio.com', '*.zernio.com',
+    'api.todoist.com', '*.todoist.com',
+    'api.parallel.ai', '*.parallel.ai',
+    'backend.composio.dev', '*.composio.dev',
+  ].join(',');
+  args.push('-e', `NO_PROXY=${noProxyHosts}`);
+  args.push('-e', `no_proxy=${noProxyHosts}`);
 
   // Strip OneCLI's CLAUDE_CODE_OAUTH_TOKEN=placeholder injection so claude CLI
   // inside the container falls back to /home/node/.claude/.credentials.json
@@ -506,6 +517,20 @@ async function buildContainerArgs(
       'ANTHROPIC_API_KEY',
       'ANTHROPIC_BASE_URL',
       'ANTHROPIC_AUTH_TOKEN',
+      // Direct-pass third-party keys for sub-agent skills that need them.
+      // OneCLI vault doesn't have entries for all of these, and the gateway
+      // is bound to 127.0.0.1 only so containers can't reach it via bridge
+      // anyway. The NO_PROXY list above keeps these calls direct.
+      'OPENROUTER_API_KEY',
+      'OPENAI_API_KEY',
+      'APIFY_TOKEN',
+      'ZERNIO_API_KEY',
+      'TODOIST_API_TOKEN',
+      'PARALLEL_API_KEY',
+      'DEEPGRAM_API_KEY',
+      'COMPOSIO_API_KEY',
+      'TELEGRAM_BOT_TOKEN',
+      'TELEGRAM_SCANNER_PORT',
     ]);
     for (const [k, v] of Object.entries(fallback)) {
       if (v) args.push('-e', `${k}=${v}`);
