@@ -267,6 +267,22 @@ function buildMounts(
     mounts.push({ hostPath: globalDir, containerPath: '/workspace/global', readonly: true });
   }
 
+  // Shared wiki (Karpathy second-brain). Curator owns it (telegram_main agent
+  // group), all other containers get read-only access via /workspace/global/wiki.
+  // Curator's own container also reads the same path (already accessible via
+  // /workspace/agent/wiki), but the parallel /workspace/global/wiki mount keeps
+  // path consistency across roles.
+  const curatorFolder = 'telegram_main';
+  const sharedWiki = path.join(GROUPS_DIR, curatorFolder, 'wiki');
+  if (fs.existsSync(sharedWiki)) {
+    const isCurator = agentGroup.folder === curatorFolder;
+    mounts.push({
+      hostPath: sharedWiki,
+      containerPath: '/workspace/global/wiki',
+      readonly: !isCurator,
+    });
+  }
+
   // Shared CLAUDE.md — read-only, imported by the composed entry point via
   // the `.claude-shared.md` symlink inside the group dir.
   const sharedClaudeMd = path.join(process.cwd(), 'container', 'CLAUDE.md');
