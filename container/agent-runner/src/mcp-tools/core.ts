@@ -218,23 +218,62 @@ export const editMessage: McpToolDefinition = {
   },
 };
 
+// Telegram only accepts a fixed Unicode emoji set for setMessageReaction.
+// Map common name aliases → actual Unicode so agents can pass either form.
+const EMOJI_ALIAS: Record<string, string> = {
+  thumbs_up: '👍', thumbsup: '👍', up: '👍', like: '👍', ok: '👍', good: '👍',
+  thumbs_down: '👎', thumbsdown: '👎', down: '👎', bad: '👎', dislike: '👎',
+  heart: '❤', love: '❤', heart_red: '❤',
+  fire: '🔥', flame: '🔥', hot: '🔥',
+  party: '🎉', tada: '🎉', celebrate: '🎉',
+  eyes: '👀', looking: '👀', watch: '👀', seen: '👀', read: '👀',
+  check: '✅', done: '✅', success: '✅',
+  cross: '❌', x: '❌', no: '❌', fail: '❌',
+  thinking: '🤔', hmm: '🤔', think: '🤔',
+  wow: '🤯', mind_blown: '🤯',
+  scream: '😱', shocked: '😱',
+  cry: '😢', sad: '😢',
+  angry: '🤬', mad: '🤬',
+  pray: '🙏', please: '🙏', thanks: '🙏',
+  clap: '👏', applause: '👏',
+  rofl: '🤣', lol: '🤣', laugh: '🤣',
+  cool: '🆒',
+  hundred: '💯', '100': '💯',
+  smile: '🙂', smiley: '😀', smiling: '😀', happy: '😀',
+  sparkles: '✨', star: '✨',
+  zap: '⚡', lightning: '⚡',
+};
+
+function normalizeReactionEmoji(input: string): string {
+  // If already a real emoji (non-ASCII), pass through.
+  if (/[^\x00-\x7F]/.test(input)) return input.trim();
+  const key = input.trim().toLowerCase().replace(/[\s-]/g, '_');
+  return EMOJI_ALIAS[key] ?? input;
+}
+
 export const addReaction: McpToolDefinition = {
   tool: {
     name: 'add_reaction',
-    description: 'Add an emoji reaction to a message.',
+    description:
+      'Add an emoji reaction to a message. Pass the actual emoji character (e.g. "👍", "❤", "👀"). Common English names ("thumbs_up", "heart", "eyes", "check") are also accepted and translated. Telegram has a whitelist — non-whitelisted emoji are silently rejected by the platform.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         messageId: { type: 'integer', description: 'Message ID (the numeric id shown in messages)' },
-        emoji: { type: 'string', description: 'Emoji name (e.g., thumbs_up, heart, check)' },
+        emoji: {
+          type: 'string',
+          description:
+            'Unicode emoji character or English alias. Examples: "👍" or "thumbs_up", "❤" or "heart", "👀" or "eyes", "✅" or "check", "🔥" or "fire", "🎉" or "party".',
+        },
       },
       required: ['messageId', 'emoji'],
     },
   },
   async handler(args) {
     const seq = Number(args.messageId);
-    const emoji = args.emoji as string;
-    if (!seq || !emoji) return err('messageId and emoji are required');
+    const rawEmoji = args.emoji as string;
+    if (!seq || !rawEmoji) return err('messageId and emoji are required');
+    const emoji = normalizeReactionEmoji(rawEmoji);
 
     const platformId = getMessageIdBySeq(seq);
     if (!platformId) return err(`Message #${seq} not found`);
@@ -255,7 +294,7 @@ export const addReaction: McpToolDefinition = {
     });
 
     log(`add_reaction: #${seq} → ${emoji} on ${platformId}`);
-    return ok(`Reaction queued for #${seq}`);
+    return ok(`Reaction queued for #${seq} as ${emoji}`);
   },
 };
 
