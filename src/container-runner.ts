@@ -237,6 +237,11 @@ function buildMounts(
 
   // Agent group folder at /workspace/agent (RW for working files + CLAUDE.local.md)
   mounts.push({ hostPath: groupDir, containerPath: '/workspace/agent', readonly: false });
+  // v1 compat: also mount the group dir at /workspace/group so v1-era CLAUDE
+  // and scheduled task prompts that reference /workspace/group/store/...,
+  // /workspace/group/skills/..., etc. keep working without rewriting all
+  // prompts. RW like the canonical /workspace/agent mount.
+  mounts.push({ hostPath: groupDir, containerPath: '/workspace/group', readonly: false });
 
   // container.json — nested RO mount on top of RW group dir so the agent
   // can read its config but cannot modify it.

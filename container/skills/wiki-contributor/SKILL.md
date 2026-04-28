@@ -1,149 +1,106 @@
 ---
 name: wiki-contributor
-description: Contribute to the shared second-brain wiki as a sub-agent. Use when you want to drop a quick note into the shared inbox, or create a role-scoped page under projects/<your-role>/. Read-only everywhere else — curator (main) owns structure.
-version: 1.0.0
+description: Contribute observations to the shared second-brain wiki as a sub-agent. In v2, contributors don't write directly — they send notes to the curator via agent-to-agent messaging, and the curator promotes them into the wiki during ingest.
+version: 2.0.0
 ---
 
-# Wiki Contributor — sub-agent write access to the shared wiki
+# Wiki Contributor — v2 a2a-write pattern
 
-You are a **contributor** to the shared wiki at `/workspace/global/wiki/`. The wiki is the user's second brain, owned and structured by the **curator** (main agent). You have a narrow, safe surface for writes:
+You are a **contributor** to the shared wiki at `/workspace/global/wiki/`. The wiki is the user's second brain, owned and structured by the **curator** (typically the main agent — Mila). In NanoClaw v2 your write path is via agent-to-agent messaging, not direct filesystem writes.
 
-- ✅ Append to `/workspace/global/wiki/inbox.md` — short notes, observations, mentions
-- ✅ Create pages under `/workspace/global/wiki/projects/<your-role>/` — your role's own workspace
-- ❌ Never touch `index.md`, `log.md`, `essentials.md`, `tags.md` (curator-only)
-- ❌ Never edit other roles' subdirectories under `projects/`
-- ❌ Never touch `people/`, `entities/`, `concepts/`, `sources/` root — route via inbox
+## Why a2a (not direct writes)
 
-Your role is read from `$NANOCLAW_GROUP` (e.g. `telegram_channel-promoter`). Your own subdir is `projects/<role-slug>/` where the slug is the group folder stripped of the `telegram_` prefix (so `telegram_channel-promoter` → `projects/channel-promoter/`).
+In v2, sub-agents are spawned via `create_agent` and live in their own per-role agent groups. The shared wiki is mounted read-only into your container — direct writes physically can't happen. Instead:
 
----
+- ✅ You **read** the wiki freely at `/workspace/global/wiki/`
+- ✅ You **send notes** to the curator via `send_message(to="parent", channel="agent", text="<note>")` — the curator triages and writes
+- ✅ Use a `[wiki-inbox]` or `[wiki-promote]` tag in your message text so the curator routes it correctly
+- ❌ Don't try `echo >> wiki/inbox.md` — the mount is RO, the write fails silently or with permission denied
+- ❌ Don't try `git add / commit` on `/workspace/global/wiki/` — same reason
 
-## When to use this skill
+## When to send a wiki note
 
-**Use it when:**
-- You notice something in your role-work (a new competitor, a campaign insight, a lead segment) that the curator should know about → drop into `inbox.md`
-- You want to keep a working note for your own role (draft, research log, checklist) → create under `projects/<your-role>/`
-- You've finished a piece of research you want to share across agents → inbox first; let the curator promote it to a formal page
+**Send to curator when:**
+- You found something during your role-work that should outlive this conversation (a competitor insight, a campaign result, a lead segment pattern)
+- You want a shared page about a domain you're researching (so other roles benefit later)
+- You've completed a piece of work and want it documented as a project artifact
 
-**Do NOT use it for:**
-- Modifying shared pages (index, log, essentials, tags, or any root `concepts/entities/people/sources/` page) — these are curator-only and the pre-commit hook will reject your commit
-- Long-term storage of role-private data — your group's own `/workspace/group/` is the right place for that
-- Quick throwaways that aren't worth the curator's attention — those belong in your group folder's own notes, not the shared inbox
+**Don't bother the curator when:**
+- It's a private working note for your own role only — write to `/workspace/agent/` (your own folder, RW)
+- It's a draft you may discard — keep in your session memory
+- It's already known content you can reference by `[[wiki-link]]`
 
----
+## The two patterns
 
-## Two operations
+### Pattern 1: drop a note in the inbox
 
-### 1. Drop a note into the shared inbox
-
-Append one line to `/workspace/global/wiki/inbox.md`:
-
-```bash
-cd /workspace/global/wiki
-git pull --rebase 2>/dev/null || true
-TS=$(date +"%Y-%m-%d %H:%M")
-ROLE="${NANOCLAW_GROUP#telegram_}"
-echo "- [$TS] [${ROLE}] <your note here>" >> inbox.md
-git add inbox.md
-git commit -m "inbox(${ROLE}): <short summary>"
-git push origin master 2>/dev/null || true
+```
+send_message({
+  to: "parent",
+  channel: "agent",
+  text: "[wiki-inbox] [marketolog] Tier-2 turfirmy — средний чек 2-5M UZS, цикл 7-14 дней. Source: Apify scrape 2026-04-28."
+})
 ```
 
-**Rules for inbox entries:**
-- One line. If it needs more than one sentence, it's a page, not an inbox note.
-- Prefix with `[<role>]` (the skill-provided template does this) so the curator can triage.
-- Mention concrete entities in `[[wiki-links]]` form if they already exist — helps the curator wire it up during promotion.
-- No secrets. See the secrets guard in the main `wiki` skill — same rules apply.
+The curator appends one-liners to `/workspace/global/wiki/inbox.md`. They get processed in the next morning brief / ingest pass into formal pages.
 
-### 2. Create or update a role-scoped page
+**Rules:**
+- One sentence per inbox entry. If it's longer, it's a page request.
+- Prefix with `[wiki-inbox] [<your-role>]` so the curator triages by role.
+- Mention `[[entities/...]]` or `[[concepts/...]]` if you're touching existing pages — helps curator wire up cross-references.
+- Cite source briefly (URL, file, conversation ID).
 
-Write to `/workspace/global/wiki/projects/<your-role>/<page-slug>.md`. Create the subdirectory on first use.
+### Pattern 2: request a full page
 
-```bash
-cd /workspace/global/wiki
-git pull --rebase 2>/dev/null || true
-ROLE="${NANOCLAW_GROUP#telegram_}"
-mkdir -p "projects/${ROLE}"
+```
+send_message({
+  to: "parent",
+  channel: "agent",
+  text: """
+[wiki-promote] [marketolog] [project: octofunnel-instagram-2026-q2]
 
-# Write the file (use Write tool for the body; frontmatter is mandatory)
-# Required frontmatter:
-#   title, type (project | note | research-log), created, updated,
-#   sources: [], related: [], tags: [], confidence: (high|medium|low)
+Title: OctoFunnel × Instagram кампания Q2 2026
 
-git add "projects/${ROLE}/<slug>.md"
-git commit -m "note(${ROLE}): <short title>"
-git push origin master 2>/dev/null || true
+Body:
+<full content here, with frontmatter if you want — curator may adjust>
+- Цель: 50 leads/день при CPL ≤ $4
+- Аудитория: 5 ниш в центре Ташкента, Tier-1 (beauty + туризм) + Tier-2 (стоматология / учебные / недвижимость)
+- KPI: ...
+- Risks: ...
+
+Sources: <urls / file paths>
+Suggested path: projects/marketing/octofunnel-instagram-2026-q2.md
+"""
+})
 ```
 
-**Rules for role-scoped pages:**
-- Filename is `kebab-case.md`.
-- Frontmatter is mandatory — the curator's lint will flag pages that miss it.
-- Cross-link both directions with `[[wiki-links]]` when you reference other pages.
-- Tags must come from `/workspace/global/wiki/tags.md` whitelist. If you need a new tag, drop a note in inbox asking the curator to whitelist it.
-
----
-
-## Before every write — pull rebase
-
-The wiki is shared across machines and agents. Always:
-
-```bash
-cd /workspace/global/wiki && git pull --rebase 2>/dev/null || true
-```
-
-If the rebase has conflicts, **stop**. Don't auto-resolve. Report to the user via `mcp__nanoclaw__send_message` that there's a wiki conflict and let the curator sort it out.
-
----
-
-## What happens if you write where you shouldn't
-
-The wiki repo has a **pre-commit hook** that checks `$NANOCLAW_GROUP` + `$NANOCLAW_ROLE`. If you (as a contributor) try to commit changes to curator-only paths, the commit aborts with a clear message. You'll need to:
-
-1. `git reset HEAD <file>` the disallowed change
-2. `git checkout -- <file>` to revert your working copy
-3. Re-route the intent through `inbox.md` instead
-
-Don't try to bypass the hook with `--no-verify`. It's a safety net, not a nuisance.
-
----
+The curator writes the full page (maybe with edits) and reports back via `<message to="<your-role>">page created at <path>` so you have a citable reference.
 
 ## Reading the wiki
 
-You have **full read access** to every file under `/workspace/global/wiki/`. Use it:
+You have full read access via `/workspace/global/wiki/`:
 
-1. **Start queries with `index.md`** — that's the catalog.
-2. **Drill into 3-5 relevant pages** from there.
+1. **Start with `index.md`** — that's the catalog of everything.
+2. **Drill into 3–5 relevant pages** from there based on your task domain.
 3. **Fallback to grep** if the index doesn't cover your topic:
    ```bash
    grep -r "<keywords>" /workspace/global/wiki/ | head -20
    ```
-4. Don't re-derive knowledge from scratch — the curator has already compiled it. If you find gaps, drop an inbox note asking the curator to fill them in.
+4. **Don't re-derive what's compiled** — if the curator already wrote about a client, a brand, an offer — cite the page, don't rewrite it from sources.
 
----
+## Anti-patterns
 
-## Quick reference — helper script
+- ❌ Trying to write to `/workspace/global/wiki/` directly (RO).
+- ❌ Bypassing the curator and writing to your own `/workspace/agent/` and calling that "wiki" — the curator can't see it, other roles can't see it. If it should be shared, route through curator.
+- ❌ Long inbox notes — promote those to full pages via Pattern 2.
+- ❌ Storing secrets in any wiki content — same security rule as the curator's `wiki` skill.
 
-A convenience helper is available at `${CLAUDE_SKILL_DIR}/wiki-contributor.sh`:
+## Curator's side (informational)
 
-```bash
-# Append to inbox
-${CLAUDE_SKILL_DIR}/wiki-contributor.sh inbox "Campaign X is outperforming Y by 40% CTR"
+When the curator (Mila) receives a `[wiki-inbox]` or `[wiki-promote]` a2a message, they:
 
-# Create a role-scoped page
-${CLAUDE_SKILL_DIR}/wiki-contributor.sh page growth-experiments-apr <<'MD'
----
-title: Growth experiments April 2026
-type: project
-created: 2026-04-22
-updated: 2026-04-22
-sources: []
-related: []
-tags: []
-confidence: medium
----
+1. Validate the proposed content (no secrets, no bad facts)
+2. For inbox: append the one-liner to `inbox.md`, possibly add a wiki-link if they're already in the area.
+3. For promote: write the page at the suggested path (or a better one), commit, send back a confirmation with the final path.
 
-Body of the page...
-MD
-```
-
-The helper handles pull-rebase, role detection, path validation, commit message formatting, and push. Use it for common cases; drop to manual bash for anything custom.
+You'll see the confirmation as an a2a follow-up — that's your signal the note made it in. If you don't see one within a minute or two, the curator either rejected it (you'd see why) or is busy — assume it's queued.
