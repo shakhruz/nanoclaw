@@ -260,7 +260,7 @@ If digest is long (>4000 chars), split by major section breaks. Telegram limit p
 
 ### Step 7b: Public publish (if enabled)
 
-If the task config sets `public_publish: true` and `public_channel: "@ashotonline"` (or similar), ALSO prepare a **public-facing version** and publish via `telegram-channel-publisher` skill.
+If the task config sets `public_publish: true` and `public_channel: "@ashotonline"` (or similar), ALSO prepare a **public-facing version** and publish via the `telegram-publish` skill (which talks to `telegram-scanner` MCP via bash + curl handshake — no MCP-SDK needed in container).
 
 **Public version differs from private:**
 - **More personal tone** — "я вижу", "мне кажется", "важно для нас" (not neutral news-speak)
@@ -293,24 +293,44 @@ Template for public digest:
 #AIновости #{YYYY_MM_DD}
 ```
 
-**Generate preview image** (16:9, 1280x720) — dark background, topic visual cue, text "AI сводка — DD month". Save to `/workspace/group/content/{date}-ai-digest.jpg`.
+**Generate preview image** (16:9, 1280x720) — dark background, topic visual cue, text "AI сводка — DD month". Save to `/workspace/global/banners/{date}-ai-digest.jpg` (use `/workspace/global/...` for auto-translation by scanner).
 
-**Publish via telegram-channel-publisher:**
-```
-mcp__telegram-scanner__publish_to_channel(
-  channel="ashotonline",
-  text="<public digest text>",
-  image_path="/workspace/group/content/{date}-ai-digest.jpg"
-)
+**Publish via `telegram-publish` skill** (post-moderation flow — default `--schedule=+1h`):
+```bash
+# Save the humanized public digest text
+cat > /tmp/digest-public.md <<'EOF'
+<public digest text>
+EOF
+
+# Publish with default scheduled +1h (post-moderation by Shakhruz)
+bash /app/skills/telegram-publish/publish.sh post ashotonline /tmp/digest-public.md \
+  /workspace/global/banners/{date}-ai-digest.jpg
 ```
 
-After publishing, notify Shakhruz in main chat:
+The script returns scheduled_id and ETA. Notify Shakhruz in main chat:
+```
+🕐 Поставила AI-сводку в @ashotonline на HH:MM (через ~1 час).
+scheduled_id: NNN
+
+Превью:
+[первые 200 символов поста]
+
+Команды (просто пиши обычным языком):
+• «опубликуй сейчас» — досрочный выход
+• «передвинь на 18:00» — изменить время
+• «замени X на Y» — поправить текст
+• «удали» — отменить публикацию
+• ничего — выйдет автоматически в HH:MM
+```
+
+Then handle Shakhruz's review commands using `publish.sh publish_now / reschedule / edit_sched / cancel`.
+
+After actual publication (either via `publish_now` or auto-release), notify:
 ```
 📢 Опубликовала в @ashotonline: AI сводка за <date>
 🔗 <post_url>
 ```
-
-Auto-publish without approval — Shakhruz moderates post-factum.
+And update `wiki/projects/channel/log.md` with the new entry.
 
 ### Step 8: Wiki Ingest (top-5 stories)
 

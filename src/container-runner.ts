@@ -485,18 +485,19 @@ async function buildContainerArgs(
   // directly via the .credentials.json mount. All other vendors (OpenAI,
   // OpenRouter, Deepgram, Apify, Zernio, Todoist, Parallel, Composio) go
   // through the OneCLI proxy with credentials auto-injected from the vault.
-  const noProxyHosts = ['api.anthropic.com', 'claude.ai', '*.anthropic.com', '*.claude.ai'].join(',');
+  const noProxyHosts = ['api.anthropic.com', 'claude.ai', '*.anthropic.com', '*.claude.ai', 'github.com', 'api.github.com', '*.github.com', 'codeload.github.com'].join(',');
   args.push('-e', `NO_PROXY=${noProxyHosts}`);
   args.push('-e', `no_proxy=${noProxyHosts}`);
 
-  // Strip OneCLI's CLAUDE_CODE_OAUTH_TOKEN=placeholder injection so claude CLI
-  // inside the container falls back to /home/node/.claude/.credentials.json
-  // (mounted RW so it can auto-refresh OAuth tokens via claude.ai). Anthropic
-  // banned third-party-tool OAuth on api.anthropic.com in 2026, so the
-  // OneCLI proxy path can't broker subscription auth — claude CLI's own
-  // auth handler must do it directly.
+  // Strip OneCLI's CLAUDE_CODE_OAUTH_TOKEN=placeholder and ANTHROPIC_API_KEY=placeholder
+  // injections so claude CLI inside the container falls back to
+  // /home/node/.claude/.credentials.json (mounted RW so it can auto-refresh
+  // OAuth tokens via claude.ai). Anthropic banned third-party-tool OAuth on
+  // api.anthropic.com in 2026, so the OneCLI proxy path can't broker
+  // subscription auth — claude CLI's own auth handler must do it directly,
+  // and a non-empty ANTHROPIC_API_KEY would override the OAuth file.
   for (let i = args.length - 2; i >= 0; i--) {
-    if (args[i] === '-e' && args[i + 1] === 'CLAUDE_CODE_OAUTH_TOKEN=placeholder') {
+    if (args[i] === '-e' && (args[i + 1] === 'CLAUDE_CODE_OAUTH_TOKEN=placeholder' || args[i + 1] === 'ANTHROPIC_API_KEY=placeholder')) {
       args.splice(i, 2);
     }
   }
@@ -515,8 +516,18 @@ async function buildContainerArgs(
       'ANTHROPIC_API_KEY',
       'ANTHROPIC_BASE_URL',
       'ANTHROPIC_AUTH_TOKEN',
+      'GITHUB_TOKEN',
       'TELEGRAM_BOT_TOKEN',
       'TELEGRAM_SCANNER_PORT',
+      // Vendor API keys — skills curl with `-H "Authorization: Bearer $KEY"`
+      // pattern, so the env var must be present even though OneCLI gateway
+      // would also inject them on the proxy path. Belt + suspenders.
+      'OPENROUTER_API_KEY',
+      'DEEPGRAM_API_KEY',
+      'APIFY_TOKEN',
+      'COMPOSIO_API_KEY',
+      'ZERNIO_API_KEY',
+      'TODOIST_API_KEY',
     ]);
     for (const [k, v] of Object.entries(fallback)) {
       if (v) args.push('-e', `${k}=${v}`);

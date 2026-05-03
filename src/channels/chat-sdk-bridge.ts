@@ -261,30 +261,82 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
 
       // Handle button clicks (ask_user_question)
       chat.onAction(async (event) => {
-        if (!event.actionId.startsWith('ncq:')) return;
-        const parts = event.actionId.split(':');
-        if (parts.length < 3) return;
-        const questionId = parts[1];
-        const selectedOption = event.value || '';
-        const userId = event.user?.userId || '';
+        // Standard ask_user_question (ncq) flow — reaches setupConfig.onAction
+        // which dispatches to the agent-runner that called ask_user_question.
+        if (event.actionId.startsWith('ncq:')) {
+          const parts = event.actionId.split(':');
+          if (parts.length < 3) return;
+          const questionId = parts[1];
+          const selectedOption = event.value || '';
+          const userId = event.user?.userId || '';
 
-        // Resolve render metadata BEFORE dispatching onAction (which deletes the row).
-        const render = getAskQuestionRender(questionId);
-        const title = render?.title ?? '❓ Question';
-        const matched = render?.options.find((o) => o.value === selectedOption);
-        const selectedLabel = matched?.selectedLabel ?? selectedOption ?? '(clicked)';
+          // Resolve render metadata BEFORE dispatching onAction (which deletes the row).
+          const render = getAskQuestionRender(questionId);
+          const title = render?.title ?? '❓ Question';
+          const matched = render?.options.find((o) => o.value === selectedOption);
+          const selectedLabel = matched?.selectedLabel ?? selectedOption ?? '(clicked)';
 
-        // Update the card to show the selected answer and remove buttons
-        try {
-          const tid = event.threadId;
-          await adapter.editMessage(tid, event.messageId, {
-            markdown: `${title}\n\n${selectedLabel}`,
-          });
-        } catch (err) {
-          log.warn('Failed to update card after action', { err });
+          // Update the card to show the selected answer and remove buttons
+          try {
+            const tid = event.threadId;
+            await adapter.editMessage(tid, event.messageId, {
+              markdown: `${title}\n\n${selectedLabel}`,
+            });
+          } catch (err) {
+            log.warn('Failed to update card after action', { err });
+          }
+
+          setupConfig.onAction(questionId, selectedOption, userId);
+          return;
         }
 
-        setupConfig.onAction(questionId, selectedOption, userId);
+        // Admin next-action menu (next:<menuId>:<optionValue>) — outside the
+        // chat-sdk agent flow. The admin (parent Claude Code session) sends
+        // these via Bot API directly, then watches data/admin-decisions/ for
+        // the decision file we drop here.
+        if (event.actionId.startsWith('next:')) {
+          const parts = event.actionId.split(':');
+          if (parts.length < 3) return;
+          const menuId = parts[1];
+          const selectedValue = parts.slice(2).join(':') || event.value || '';
+          const userId = event.user?.userId || '';
+
+          // Update card with selected answer (best effort).
+          try {
+            const tid = event.threadId;
+            await adapter.editMessage(tid, event.messageId, {
+              markdown: `✅ Выбрано: \`${selectedValue}\``,
+            });
+          } catch (err) {
+            log.warn('Failed to update next-action card', { err });
+          }
+
+          // Drop decision file for admin session to pick up.
+          try {
+            const fs = await import('fs');
+            const path = await import('path');
+            const decisionsDir = path.resolve(process.cwd(), 'data/admin-decisions');
+            fs.mkdirSync(decisionsDir, { recursive: true });
+            const decisionFile = path.join(decisionsDir, `${menuId}.json`);
+            fs.writeFileSync(
+              decisionFile,
+              JSON.stringify({
+                menuId,
+                value: selectedValue,
+                userId,
+                timestamp: new Date().toISOString(),
+                threadId: event.threadId,
+                messageId: event.messageId,
+              }, null, 2),
+            );
+            log.info('Admin next-action decision recorded', { menuId, value: selectedValue });
+          } catch (err) {
+            log.error('Failed to write admin decision file', { err });
+          }
+          return;
+        }
+
+        // Unknown actionId prefix — ignore.
       });
 
       await chat.initialize();

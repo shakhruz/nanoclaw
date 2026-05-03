@@ -17,6 +17,29 @@ function generateId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Auto-acknowledge: emit a 👀 reaction on every triggering chat-sdk inbound.
+ * Runs immediately after markProcessing, before the agent query starts.
+ * The composite row id (chat:msg:groupId) is trimmed to chat:msg so the
+ * channel adapter (which expects 2 segments) parses it cleanly — same trim
+ * the addReaction MCP tool applies (see core.ts:trimmedId).
+ */
+function emitAutoEyesReactions(messages: MessageInRow[], routing: RoutingContext): void {
+  for (const m of messages) {
+    if (m.kind !== 'chat-sdk') continue;
+    if (m.trigger !== 1) continue;
+    const trimmedId = m.id.split(':').slice(0, 2).join(':');
+    writeMessageOut({
+      id: generateId(),
+      kind: 'chat',
+      platform_id: routing.platformId,
+      channel_type: routing.channelType,
+      thread_id: routing.threadId,
+      content: JSON.stringify({ operation: 'reaction', messageId: trimmedId, emoji: '👀' }),
+    });
+  }
+}
+
 export interface PollLoopConfig {
   provider: AgentProvider;
   cwd: string;
@@ -83,6 +106,14 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     markProcessing(ids);
 
     const routing = extractRouting(messages);
+
+    // Auto-acknowledge: emit 👀 reaction on every chat-sdk inbound BEFORE the
+    // agent even starts the query. Guarantees Shakhruz sees that the message
+    // was picked up — independent of whether the agent's discipline (set in
+    // CLAUDE.local.md) survives auto-compaction or pipe-mode focus. Without
+    // this, observed coverage was ~53% (25 of 47 inbound chats acknowledged
+    // on 2026-05-02 — see admin debrief).
+    emitAutoEyesReactions(messages, routing);
 
     // Command handling: the host router gates filtered and unauthorized
     // admin commands before they reach the container. The only command

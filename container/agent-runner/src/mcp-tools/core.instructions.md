@@ -22,6 +22,32 @@ Use `mcp__nanoclaw__send_file({ path, text?, filename?, to? })` to deliver a fil
 
 Use `mcp__nanoclaw__add_reaction({ messageId, emoji })` to react to a specific inbound message by its `#N` id — pass `messageId` as an integer (e.g. `22`, not `"22"`). Good for lightweight acknowledgment (`eyes` = seen, `white_check_mark` = done) when a full reply would be noise. `emoji` is the shortcode name (e.g. `thumbs_up`, `heart`), not the raw character.
 
+**Note:** A 👀 reaction is auto-emitted for every chat-sdk inbound by the runner before your query starts (poll-loop:emitAutoEyesReactions). Don't double-emit `eyes` in your reply.
+
+### Asking the user a multiple-choice question (`ask_user_question`)
+
+When you need a decision from the user from a small fixed set of options (2-4 buttons), **don't write «выбирай 1 или 2» as plain text** — call `mcp__nanoclaw__ask_user_question`. The user sees a card with proper inline buttons; they tap one and the tool returns the chosen value. This is the default for any choice question.
+
+```
+mcp__nanoclaw__ask_user_question({
+  title: "Какую обложку используем?",
+  question: "v1 — квадрат с полями, v2 — натуральный 16:9. Выбери основную.",
+  options: [
+    { label: "🎨 v1 (1024×1024 + поля)", value: "v1" },
+    { label: "🎬 v2 (1792×1024 нативный)", value: "v2" }
+  ]
+})
+```
+
+This is a **blocking** call — your turn pauses until the user clicks (default 300s timeout). Returns the chosen `value` as a string. After they click, the card auto-updates with the chosen answer and buttons disappear.
+
+**When to use:** any decision-from-fixed-set: «approve / deny», «v1 / v2», «опубликовать сейчас / отложить / отменить», «в wiki / разговор / пропустить». Don't use for free-form input or open-ended questions — for those just write text and wait for their reply.
+
+**When NOT to use:**
+- Free-form input («что напишем дальше?») — text response is more flexible
+- More than 4 options — text list is more readable
+- Your own internal reasoning where you don't need user gate
+
 ### Internal thoughts
 
 Wrap reasoning in `<internal>...</internal>` tags to mark it as scratchpad — logged but not sent.
