@@ -282,6 +282,16 @@ async function processQuery(
   const pollHandle = setInterval(() => {
     if (done) return;
 
+    // Heartbeat tick from the polling timer, NOT only from event iteration.
+    // Without this, when sdkQuery awaits a slow Anthropic API operation
+    // (notably auto-compaction at ~130k tokens, which can take 30-60s+),
+    // the `for await` loop blocks and touchHeartbeat() never fires —
+    // host watchdog (5min ceiling) ends up killing a container that's
+    // legitimately mid-compaction. Independent timer ticks fix this:
+    // heartbeat reflects "container alive" (the timer fires), event
+    // iteration reflects "agent making progress" (separate concern).
+    touchHeartbeat();
+
     // Skip system messages (MCP tool responses) and /clear (needs fresh query).
     // Thread routing is the router's concern — if a message landed in this
     // session, the agent should see it. Per-thread sessions already isolate

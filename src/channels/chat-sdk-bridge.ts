@@ -320,14 +320,18 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
             const decisionFile = path.join(decisionsDir, `${menuId}.json`);
             fs.writeFileSync(
               decisionFile,
-              JSON.stringify({
-                menuId,
-                value: selectedValue,
-                userId,
-                timestamp: new Date().toISOString(),
-                threadId: event.threadId,
-                messageId: event.messageId,
-              }, null, 2),
+              JSON.stringify(
+                {
+                  menuId,
+                  value: selectedValue,
+                  userId,
+                  timestamp: new Date().toISOString(),
+                  threadId: event.threadId,
+                  messageId: event.messageId,
+                },
+                null,
+                2,
+              ),
             );
             log.info('Admin next-action decision recorded', { menuId, value: selectedValue });
           } catch (err) {

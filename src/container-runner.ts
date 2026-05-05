@@ -485,7 +485,16 @@ async function buildContainerArgs(
   // directly via the .credentials.json mount. All other vendors (OpenAI,
   // OpenRouter, Deepgram, Apify, Zernio, Todoist, Parallel, Composio) go
   // through the OneCLI proxy with credentials auto-injected from the vault.
-  const noProxyHosts = ['api.anthropic.com', 'claude.ai', '*.anthropic.com', '*.claude.ai', 'github.com', 'api.github.com', '*.github.com', 'codeload.github.com'].join(',');
+  const noProxyHosts = [
+    'api.anthropic.com',
+    'claude.ai',
+    '*.anthropic.com',
+    '*.claude.ai',
+    'github.com',
+    'api.github.com',
+    '*.github.com',
+    'codeload.github.com',
+  ].join(',');
   args.push('-e', `NO_PROXY=${noProxyHosts}`);
   args.push('-e', `no_proxy=${noProxyHosts}`);
 
@@ -497,7 +506,10 @@ async function buildContainerArgs(
   // subscription auth — claude CLI's own auth handler must do it directly,
   // and a non-empty ANTHROPIC_API_KEY would override the OAuth file.
   for (let i = args.length - 2; i >= 0; i--) {
-    if (args[i] === '-e' && (args[i + 1] === 'CLAUDE_CODE_OAUTH_TOKEN=placeholder' || args[i + 1] === 'ANTHROPIC_API_KEY=placeholder')) {
+    if (
+      args[i] === '-e' &&
+      (args[i + 1] === 'CLAUDE_CODE_OAUTH_TOKEN=placeholder' || args[i + 1] === 'ANTHROPIC_API_KEY=placeholder')
+    ) {
       args.splice(i, 2);
     }
   }
@@ -528,6 +540,8 @@ async function buildContainerArgs(
       'COMPOSIO_API_KEY',
       'ZERNIO_API_KEY',
       'TODOIST_API_KEY',
+      'GEMINI_API_KEY',
+      'FAL_KEY',
     ]);
     for (const [k, v] of Object.entries(fallback)) {
       if (v) args.push('-e', `${k}=${v}`);

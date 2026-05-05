@@ -39,6 +39,7 @@
 import { normalizeOptions, type RawOption } from '../../channels/ask-question.js';
 import { getAllAgentGroups } from '../../db/agent-groups.js';
 import { getMessagingGroup } from '../../db/messaging-groups.js';
+import { getUser } from './db/users.js';
 import { getDeliveryAdapter } from '../../delivery.js';
 import { log } from '../../log.js';
 import type { InboundEvent } from '../../channels/adapter.js';
@@ -46,8 +47,8 @@ import { pickApprovalDelivery, pickApprover } from '../approvals/primitive.js';
 import { createPendingChannelApproval, hasInFlightChannelApproval } from './db/pending-channel-approvals.js';
 
 const APPROVAL_OPTIONS: RawOption[] = [
-  { label: 'Approve', selectedLabel: '✅ Wired', value: 'approve' },
-  { label: 'Ignore', selectedLabel: '🙅 Ignored', value: 'reject' },
+  { label: 'Одобрить', selectedLabel: '✅ Подключён', value: 'approve' },
+  { label: 'Игнорировать', selectedLabel: '🙅 Отклонён', value: 'reject' },
 ];
 
 export interface RequestChannelApprovalInput {
@@ -101,13 +102,33 @@ export async function requestChannelApproval(input: RequestChannelApprovalInput)
     return;
   }
 
-  const originName = originMg?.name ?? originMg?.platform_id ?? 'an unfamiliar chat';
   const isGroup = originMg?.is_group === 1;
 
-  const title = isGroup ? '📣 Bot mentioned in new chat' : '💬 New direct message';
+  // Resolve sender display_name (Russian message, не безликий platform_id).
+  // For DM, platform_id == user_id (e.g. "telegram:617596472") → reuse as user lookup key.
+  const senderUserId =
+    !isGroup && originMg?.platform_id
+      ? `${originMg.channel_type}:${originMg.platform_id.replace(/^[^:]+:/, '')}`
+      : null;
+  const senderUser = senderUserId ? getUser(senderUserId) : null;
+  const senderName = senderUser?.display_name || originMg?.platform_id || 'неизвестный отправитель';
+
+  // Preview первого сообщения (event.message.content — JSON blob).
+  let preview = '';
+  try {
+    const content = JSON.parse(event.message.content || '{}');
+    const text = (content.text || content.body || '').toString();
+    if (text) preview = `\n\nПервое сообщение: «${text.slice(0, 200)}${text.length > 200 ? '…' : ''}»`;
+  } catch {
+    /* preview optional */
+  }
+
+  const originName = originMg?.name ?? originMg?.platform_id ?? '';
+
+  const title = isGroup ? '📣 Бот упомянут в новом чате' : '💬 Новый личный диалог';
   const question = isGroup
-    ? `Your agent was mentioned in ${originName} on ${originChannelType}. Wire it to ${target.name} and let it engage?`
-    : `Someone DM'd your agent on ${originChannelType} (${originName}). Wire it to ${target.name} and let it respond?`;
+    ? `Бота упомянули в ${originName} (${originChannelType}). Привязать к "${target.name}" и разрешить отвечать?${preview}`
+    : `Новый пользователь ${senderName} написал боту в личку. Привязать к "${target.name}" и разрешить ответить?${preview}`;
 
   createPendingChannelApproval({
     messaging_group_id: messagingGroupId,

@@ -203,6 +203,10 @@ export const editMessage: McpToolDefinition = {
       return err(`Cannot determine destination for message #${seq}`);
     }
 
+    // Trim trailing per-agent-group disambiguator so the chat-adapter parses
+    // the composite id into chat+msg (its decoder expects exactly 2 segments).
+    const trimmedId = platformId.split(':').slice(0, 2).join(':');
+
     const id = generateId();
     writeMessageOut({
       id,
@@ -210,7 +214,7 @@ export const editMessage: McpToolDefinition = {
       platform_id: routing.platform_id,
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
-      content: JSON.stringify({ operation: 'edit', messageId: platformId, text }),
+      content: JSON.stringify({ operation: 'edit', messageId: trimmedId, text }),
     });
 
     log(`edit_message: #${seq} → ${platformId}`);
@@ -283,6 +287,10 @@ export const addReaction: McpToolDefinition = {
       return err(`Cannot determine destination for message #${seq}`);
     }
 
+    // Trim trailing per-agent-group disambiguator so the chat-adapter parses
+    // the composite id into chat+msg (its decoder expects exactly 2 segments).
+    const trimmedId = platformId.split(':').slice(0, 2).join(':');
+
     const id = generateId();
     writeMessageOut({
       id,
@@ -290,7 +298,7 @@ export const addReaction: McpToolDefinition = {
       platform_id: routing.platform_id,
       channel_type: routing.channel_type,
       thread_id: routing.thread_id,
-      content: JSON.stringify({ operation: 'reaction', messageId: platformId, emoji }),
+      content: JSON.stringify({ operation: 'reaction', messageId: trimmedId, emoji }),
     });
 
     log(`add_reaction: #${seq} → ${emoji} on ${platformId}`);

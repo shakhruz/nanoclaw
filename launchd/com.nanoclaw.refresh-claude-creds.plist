@@ -7,16 +7,16 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/milagpt/nanoclaw/nanoclaw-v2/scripts/refresh-claude-creds.sh</string>
+        <string>/Users/milagpt/nanoclaw/mila-nanoclaw/scripts/refresh-claude-creds.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>1800</integer>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/milagpt/nanoclaw/nanoclaw-v2/logs/refresh-claude-creds.log</string>
+    <string>/Users/milagpt/nanoclaw/mila-nanoclaw/logs/refresh-claude-creds.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/milagpt/nanoclaw/nanoclaw-v2/logs/refresh-claude-creds.err.log</string>
+    <string>/Users/milagpt/nanoclaw/mila-nanoclaw/logs/refresh-claude-creds.err.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

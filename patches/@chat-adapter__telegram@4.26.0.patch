@@ -1,0 +1,22 @@
+diff --git a/dist/index.js b/dist/index.js
+index 98101e0668edfa6f5e57f934e4dd366338e4d272..85286241d1f5488c5f119dbe95b153b07ec01c91 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -946,6 +946,17 @@ var TelegramAdapter = class {
+         })
+       );
+     }
++    if (raw.video_note) {
++      attachments.push(
++        this.createAttachment("video", raw.video_note.file_id, {
++          size: raw.video_note.file_size,
++          width: raw.video_note.length,
++          height: raw.video_note.length,
++          name: "video_note.mp4",
++          mimeType: "video/mp4"
++        })
++      );
++    }
+     if (raw.audio) {
+       attachments.push(
+         this.createAttachment("audio", raw.audio.file_id, {

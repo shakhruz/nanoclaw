@@ -48,13 +48,33 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libxshmfence1 \
         ca-certificates \
         curl \
+        ffmpeg \
         git \
+        python3 \
+        python3-pip \
+        python3-venv \
         tini \
         unzip \
+        yt-dlp \
     && if [ "$INSTALL_CJK_FONTS" = "true" ]; then \
         apt-get install -y --no-install-recommends fonts-noto-cjk; \
        fi \
     && rm -rf /var/lib/apt/lists/*
+
+# ---- Whisper for video/audio transcription ----------------------------------
+# faster-whisper: lighter and ~4x faster than openai-whisper. Installed in a
+# venv to avoid clashing with system Python. Model `small` (~470MB) is
+# downloaded at build time into /opt/whisper-models so non-root container
+# users can read it. Override at runtime with WHISPER_MODEL=medium etc.
+ENV WHISPER_VENV=/opt/whisper-venv
+ENV WHISPER_MODEL=small
+ENV WHISPER_MODEL_DIR=/opt/whisper-models
+ENV PATH="${WHISPER_VENV}/bin:${PATH}"
+RUN python3 -m venv ${WHISPER_VENV} && \
+    ${WHISPER_VENV}/bin/pip install --no-cache-dir 'faster-whisper==1.0.3' requests && \
+    mkdir -p ${WHISPER_MODEL_DIR} && \
+    ${WHISPER_VENV}/bin/python3 -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu', compute_type='int8', download_root='${WHISPER_MODEL_DIR}')" && \
+    chmod -R a+rX ${WHISPER_VENV} ${WHISPER_MODEL_DIR}
 
 # Chromium path for agent-browser / Playwright consumers
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium

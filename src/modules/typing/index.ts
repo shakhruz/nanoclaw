@@ -37,12 +37,20 @@ const TYPING_GRACE_MS = 15000;
  */
 const HEARTBEAT_FRESH_MS = 6000;
 /**
- * After we deliver a user-facing message, pause typing for this
- * long so the client-side indicator has time to visually clear.
- * Tuned for the longest common expiry (Discord ~10s). The interval
- * stays running; ticks inside the pause just skip the setTyping call.
+ * After we deliver a user-facing message, pause typing for this long.
+ *
+ * 2026-05-04: Patched from 10s → 60s after Mila reported (mta-20260504-072000)
+ * that Shakhruz sees the typing indicator burning constantly during long
+ * agent turns (e.g. sub-agent reports, large doc generation). With 10s the
+ * pause expired before the next chunk of work and typing resumed for
+ * minutes/tens of minutes between actual messages.
+ *
+ * 60s gives the client a clean visual gap between messages. If the agent
+ * is genuinely about to send another message, the next inbound or the
+ * next setTyping refresh after pause expiry covers it. The interval keeps
+ * running; ticks inside the pause skip setTyping but resume automatically.
  */
-const POST_DELIVERY_PAUSE_MS = 10000;
+const POST_DELIVERY_PAUSE_MS = 60000;
 
 interface TypingAdapter {
   setTyping?(channelType: string, platformId: string, threadId: string | null): Promise<void>;

@@ -310,9 +310,18 @@ export class ClaudeProvider implements AgentProvider {
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'rate_limit_event') {
           yield { type: 'error', message: 'Rate limit', retryable: false, classification: 'quota' };
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'compact_boundary') {
+          // Auto-compaction completed (SDK summarized old messages to fit
+          // the next turn). This is NOT a turn result — agent hasn't yet
+          // produced its actual reply to the user. Previously we yielded
+          // type:'result' here, which made poll-loop dispatch the system
+          // text «Context compacted (N tokens compacted)» into the user
+          // chat AND mark the batch completed, even though the real reply
+          // was still pending. Switch to a structural progress event so
+          // poll-loop logs it but doesn't end the turn or send to chat.
           const meta = (message as { compact_metadata?: { pre_tokens?: number } }).compact_metadata;
-          const detail = meta?.pre_tokens ? ` (${meta.pre_tokens.toLocaleString()} tokens compacted)` : '';
-          yield { type: 'result', text: `Context compacted${detail}.` };
+          const tokens = meta?.pre_tokens ?? 0;
+          log(`compact_boundary: ${tokens.toLocaleString()} tokens compacted`);
+          yield { type: 'progress', message: `compact_boundary tokens=${tokens}` };
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'task_notification') {
           const tn = message as { summary?: string };
           yield { type: 'progress', message: tn.summary || 'Task notification' };
