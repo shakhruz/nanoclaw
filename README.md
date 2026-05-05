@@ -1,3 +1,17 @@
+> 📍 **Это форк NanoClaw → MILA Edition** ([@shakhruz_ashirov](https://t.me/shakhruz_ashirov))
+>
+> AI-партнёр Шахруза для Telegram-first бизнеса: голосовые дайджесты, OctoFunnel-воронки, Telegram Ads, контент-фабрика, AI Business Club community management. Активная ветка: [`migrate/v1-to-v2`](../../tree/migrate/v1-to-v2).
+>
+> **Что добавлено поверх upstream:** см. [README-CUSTOMIZATIONS.md](README-CUSTOMIZATIONS.md) — 40+ custom skills, voice digest pipeline, pending decisions queue, mobile-friendly UX, two-way admin↔Mila IPC, partner-mode identity, и т.д.
+>
+> **История изменений:** [CHANGELOG-MILA.md](CHANGELOG-MILA.md) — хронология всех наших коммитов поверх upstream.
+>
+> **Хочешь развернуть свою Mila?** Скоро откроется курс по адаптации этого форка под твой бизнес ([@ashotonline](https://t.me/ashotonline) — анонс там).
+>
+> ---
+>
+> 🇬🇧 _English README from upstream NanoClaw below._
+
 <p align="center">
   <img src="assets/nanoclaw-logo.png" alt="NanoClaw" width="400">
 </p>
